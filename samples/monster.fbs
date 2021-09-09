@@ -26,7 +26,7 @@ table Monster {
 }
 
 table Weapon {
-  name:string;
+  name:string(key);
   damage:short;
 }
 
