@@ -1,4 +1,5 @@
 -- need to update the Lua path to point to the local flatbuffers implementation
+package.path = string.format("/Users/yubin/.luarocks/lib/lua/5.3/?.so;%s",package.path)
 package.path = string.format("../lua/?.lua;%s",package.path)
 package.path = string.format("./lua/?.lua;%s",package.path)
 
