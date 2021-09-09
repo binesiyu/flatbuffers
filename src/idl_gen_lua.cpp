@@ -431,27 +431,6 @@ class LuaGenerator : public BaseGenerator {
     code += "AsString(start, stop)\n";
     code += std::string(Indent) + "return " + SelfData + ":VectorAsString(" +
             NumToString(field.value.offset) + ", start, stop)\n";
-    code += "    else\n"
-            "        return rawget(self, j)\n"
-            "    end\n"
-            "end,\n\n";
-
-    code += "__ipairs = function(t)\n"
-            "    local idx = 0\n"
-            "    local l = #t\n"
-            "    return function()\n"
-            "        idx = idx + 1\n"
-            "        if idx <= l then\n"
-            "            return idx, t[idx]\n"
-            "        end\n"
-            "    end\n"
-            "end\n"
-            "}\n";
-
-    code += ")\n"
-            "rawset(self, \"" + arr_key + "\", ret)\n"
-            "return ret\n";
-
     code += EndFunc;
   }
 
