@@ -69,8 +69,8 @@ class LuaGenerator : public BaseGenerator {
   void BeginClass(const StructDef &struct_def, std::string *code_ptr) {
     std::string &code = *code_ptr;
     code += "local " + NormalizedName(struct_def) + " = {} -- the module\n";
-    code += "local " + NormalizedMetaName(struct_def) +
-            " = {} -- the class metatable\n";
+    //code += "local " + NormalizedMetaName(struct_def) +
+    //        " = {} -- the class metatable\n";
     code += "\n";
   }
 
@@ -93,7 +93,7 @@ class LuaGenerator : public BaseGenerator {
   }
 
   std::string NormalizedMetaName(const Definition &definition) const {
-    return EscapeKeyword(definition.name) + "_mt";
+      return EscapeKeyword(definition.name);// + "_mt";
   }
 
   // A single enum member.
@@ -118,13 +118,18 @@ class LuaGenerator : public BaseGenerator {
     code += std::string(Indent) + "local o = {}\n";
     code += std::string(Indent) +
             "setmetatable(o, {__index = function(t, key)\n" +
-            std::string(Indent) + "local f = rawget(" + NormalizedMetaName(struct_def) + ", key)\n" +
-            std::string(Indent) + "if key == 'Init' then\n" +
+            std::string(Indent) + std::string(Indent) + "local f = rawget(" + NormalizedMetaName(struct_def) + ", key)\n" +
+            /*std::string(Indent) + "if key == 'Init' then\n" +
             std::string(Indent) + Indent + "return f\n" +
             std::string(Indent) + "end\n" +
-            std::string(Indent) + "return f(t)\n"
-            + "end})";
-    code += std::string(Indent) + "return o\n";
+             */
+            std::string(Indent) + "return f(t)\n" +
+            std::string(Indent) + "end,\n" +
+            std::string(Indent) + "__call = function(self,buf,pos)\n" +
+            std::string(Indent) + std::string(Indent) + SelfData + " = flatbuffers.view.New(buf, pos)\n" +
+            std::string(Indent) + "end\n" +
+            std::string(Indent) + "})";
+    code += std::string(Indent) + "\nreturn o\n";
     code += EndFunc;
   }
 
@@ -143,7 +148,7 @@ class LuaGenerator : public BaseGenerator {
             "local n = flatbuffers.N.UOffsetT:Unpack(buf, offset)\n";
     code += std::string(Indent) + "local o = " + NormalizedName(struct_def) +
             ".New()\n";
-    code += std::string(Indent) + "o:Init(buf, n + offset)\n";
+    code += std::string(Indent) + "o(buf, n + offset)\n";
     code += std::string(Indent) + "return o\n";
     code += EndFunc;
   }
@@ -152,7 +157,8 @@ class LuaGenerator : public BaseGenerator {
   void InitializeExisting(const StructDef &struct_def, std::string *code_ptr) {
     std::string &code = *code_ptr;
 
-    GenReceiver(struct_def, code_ptr);
+    //GenReceiver(struct_def, code_ptr);
+    code += "function " + NormalizedName(struct_def) + ":";
     code += "Init(buf, pos)\n";
     code +=
         std::string(Indent) + SelfData + " = flatbuffers.view.New(buf, pos)\n";
@@ -221,7 +227,7 @@ class LuaGenerator : public BaseGenerator {
     code += MakeCamel2(NormalizedName(field));
     code += "()\n";
     code += "local _temp = function(obj)\n";
-    code += std::string(Indent) + "obj:Init(" + SelfDataBytes + ", " +
+    code += std::string(Indent) + "obj(" + SelfDataBytes + ", " +
             SelfDataPos + " + ";
     code += NumToString(field.value.offset) + ")\n";
     code += std::string(Indent) + "return obj\n";
@@ -250,7 +256,7 @@ class LuaGenerator : public BaseGenerator {
     code += std::string(Indent) + Indent + "local obj = require('" +
             TypeNameWithNamespace(field) + "').New()\n";
     code +=
-        std::string(Indent) + Indent + "obj:Init(" + SelfDataBytes + ", x)\n";
+        std::string(Indent) + Indent + "obj(" + SelfDataBytes + ", x)\n";
     code += std::string(Indent) + Indent + "return obj\n";
     code += std::string(Indent) + End;
     code += EndFunc;
@@ -292,7 +298,7 @@ class LuaGenerator : public BaseGenerator {
     code +=
         std::string(Indent) + Indent +
         "local obj = "
-        "flatbuffers.view.New(require('flatbuffers.binaryarray').New(0), 0)\n";
+        "flatbuffers.view.New(flatbuffers.binaryarray.New(0), 0)\n";
     code += std::string(Indent) + Indent + GenGetter(field.value.type) +
             "obj, o)\n";
     code += std::string(Indent) + Indent + "return obj\n";
@@ -344,7 +350,7 @@ class LuaGenerator : public BaseGenerator {
     code += std::string(Indent) + Indent + "local obj = require('" +
             TypeNameWithNamespace(field) + "').New()\n";
     code +=
-        std::string(Indent) + Indent + "obj:Init(" + SelfDataBytes + ", x)\n";
+        std::string(Indent) + Indent + "obj(" + SelfDataBytes + ", x)\n";
     code += std::string(Indent) + Indent + "return obj\n";
     code += std::string(Indent) + End;
 
@@ -666,7 +672,7 @@ class LuaGenerator : public BaseGenerator {
 
     // Generate the Init method that sets the field in a pre-existing
     // accessor object. This is to allow object reuse.
-    InitializeExisting(struct_def, code_ptr);
+    //InitializeExisting(struct_def, code_ptr);
     for (auto it = struct_def.fields.vec.begin();
          it != struct_def.fields.vec.end(); ++it) {
       auto &field = **it;
