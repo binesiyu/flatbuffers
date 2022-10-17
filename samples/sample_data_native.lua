@@ -1,9 +1,7 @@
 -- need to update the Lua path to point to the local flatbuffers implementation
-package.path = string.format("/Users/yubin/.luarocks/lib/lua/5.3/?.so;%s",package.path)
--- package.path = string.format("../lua/?.so;%s",package.path)
--- package.path = string.format("../lua/?.lua;%s",package.path)
--- package.path = string.format("/Users/yubin/Documents/dev/lua/lua-flatbuffers-master/external/lua-flatbuffers/?.so;%s",package.path)
--- package.path = string.format("/Users/yubin/Documents/dev/lua/lua-flatbuffers-master/external/lua-flatbuffers/?.lua;%s",package.path)
+-- package.cpath = string.format("/Users/yubin/.luarocks/lib/lua/5.3/?.so;%s",package.path)
+-- package.cpath = string.format("/Users/yubin/Documents/dev/lua/lua-flatbuffers-master/external/lua-flatbuffers/?.so;%s",package.cpath)
+package.path = string.format("/Users/yubin/Documents/dev/lua/lua-flatbuffers-master/external/lua-flatbuffers/?.lua;%s",package.path)
 package.path = string.format("./luafix/?.lua;%s",package.path)
 
 -- require the library

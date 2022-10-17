@@ -140,3 +140,5 @@ flatbuffers.pc
 **/FlatBuffers.Test.Swift.xcodeproj
 **/html/**
 **/latex/**
+lua_fix/.sharedlib/
+lua_fix/.staticlib/

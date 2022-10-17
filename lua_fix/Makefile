@@ -37,7 +37,8 @@ $(STATICDIR)/%.o: %.cpp
 	@[ ! -d $(STATICDIR) ] & mkdir -p $(STATICDIR)
 	$(CXX) -c $(CFLAGS) -MMD -MP -MF"$(@:%.o=%.d)" -o $@ $<
 
-all: $(TARGET_SO) $(TARGET_A)
+# all: $(TARGET_SO) $(TARGET_A)
+all: $(TARGET_SO)
 
 staticlib: $(TARGET_A)
 sharedlib: $(TARGET_SO)
