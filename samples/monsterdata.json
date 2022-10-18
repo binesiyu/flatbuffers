@@ -20,5 +20,6 @@
   "equipped": {
     "name": "bow",
     "damage": 90
-  }
+  },
+  "isnpc": 1
 }

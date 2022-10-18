@@ -23,6 +23,7 @@ table Monster {
   weapons:[Weapon];
   equipped:Equipment;
   path:[Vec3];
+  isnpc:bool;
 }
 
 table Weapon {

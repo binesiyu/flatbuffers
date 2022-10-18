@@ -33,9 +33,9 @@ const char *Indent = "    ";
 const char *Comment = "-- ";
 const char *End = "end\n";
 const char *EndFunc = "end\n";
-const char *SelfData = "self.view";
-const char *SelfDataPos = "self.view.pos";
-const char *SelfDataBytes = "self.view.bytes";
+const char *SelfData = "self.__view";
+const char *SelfDataPos = "self.__view.pos";
+const char *SelfDataBytes = "self.__view.bytes";
 
 std::string MakeCamel2(const std::string &in, bool first = true);
 
@@ -114,44 +114,9 @@ class LuaGenerator : public BaseGenerator {
                                   std::string *code_ptr) {
     std::string &code = *code_ptr;
 
-    code += "function " + NormalizedName(struct_def) + ".New()\n";
-    code += std::string(Indent) + "local o = {}\n";
-    code += std::string(Indent) +
-            "setmetatable(o, {__index = function(t, key)\n" +
-            std::string(Indent) + std::string(Indent) + "local f = rawget(" + NormalizedMetaName(struct_def) + ", key)\n" +
-            /*std::string(Indent) + "if key == 'Init' then\n" +
-            std::string(Indent) + Indent + "return f\n" +
-            std::string(Indent) + "end\n" +
-             */
-            std::string(Indent) + "return f(t)\n" +
-            std::string(Indent) + "end,\n" +
-            std::string(Indent) + "__call = function(self,buf,pos)\n" +
-            std::string(Indent) + std::string(Indent) + SelfData + " = flatbuffers.view.New(buf, pos)\n" +
-            std::string(Indent) + "end\n" +
-            std::string(Indent) + "})";
-    code += std::string(Indent) + "\nreturn o\n";
-    code += EndFunc;
+    code += NormalizedName(struct_def) + ".__New = fb.New("  + NormalizedName(struct_def) + ")\n\n";
   }
 
-  // Initialize a new struct or table from existing data.
-  void NewRootTypeFromBuffer(const StructDef &struct_def,
-                             std::string *code_ptr) {
-    std::string &code = *code_ptr;
-
-    code += "function " + NormalizedName(struct_def) + ".GetRootAs" +
-            NormalizedName(struct_def) + "(buf, offset)\n";
-    code += std::string(Indent) + "if type(buf) == \"string\" then\n";
-    code += std::string(Indent) + Indent +
-            "buf = flatbuffers.binaryArray.New(buf)\n";
-    code += std::string(Indent) + "end\n";
-    code += std::string(Indent) +
-            "local n = flatbuffers.N.UOffsetT:Unpack(buf, offset)\n";
-    code += std::string(Indent) + "local o = " + NormalizedName(struct_def) +
-            ".New()\n";
-    code += std::string(Indent) + "o(buf, n + offset)\n";
-    code += std::string(Indent) + "return o\n";
-    code += EndFunc;
-  }
 
   // Initialize an existing object with other data, to avoid an allocation.
   void InitializeExisting(const StructDef &struct_def, std::string *code_ptr) {
@@ -161,7 +126,7 @@ class LuaGenerator : public BaseGenerator {
     code += "function " + NormalizedName(struct_def) + ":";
     code += "Init(buf, pos)\n";
     code +=
-        std::string(Indent) + SelfData + " = flatbuffers.view.New(buf, pos)\n";
+        std::string(Indent) + SelfData + " = fb.view.New(buf, pos)\n";
     code += EndFunc;
   }
 
@@ -198,24 +163,28 @@ class LuaGenerator : public BaseGenerator {
   void GetScalarFieldOfTable(const StructDef &struct_def, const FieldDef &field,
                              std::string *code_ptr) {
     std::string &code = *code_ptr;
-    std::string getter = GenGetter(field.value.type);
-    GenReceiver(struct_def, code_ptr);
+    GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += "()\n";
-    code += OffsetPrefix(field);
-    getter += std::string("o + ") + SelfDataPos + ")";
+
     auto is_bool = field.value.type.base_type == BASE_TYPE_BOOL;
-    if (is_bool) { getter = "(" + getter + " ~= 0)"; }
-    code += std::string(Indent) + Indent + "return " + getter + "\n";
-    code += std::string(Indent) + End;
+    if (is_bool) {
+        code += " = fb.GetFieldFunBool(";
+    }
+    else {
+        code += " = fb.GetFieldFun(";
+    }
+
+    code += NumToString(field.value.offset);
+    code += ",N.";
+    code += MakeCamel(GenTypeGet(field.value.type));
+
     std::string default_value;
     if (is_bool) {
       default_value = field.value.constant == "0" ? "false" : "true";
     } else {
       default_value = field.value.constant;
     }
-    code += std::string(Indent) + "return " + default_value + "\n";
-    code += EndFunc;
+    code += "," + default_value + ")\n\n";
   }
 
   // Get a struct by initializing an existing struct.
@@ -242,39 +211,32 @@ class LuaGenerator : public BaseGenerator {
   void GetStructFieldOfTable(const StructDef &struct_def, const FieldDef &field,
                              std::string *code_ptr) {
     std::string &code = *code_ptr;
-    GenReceiver(struct_def, code_ptr);
+    GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += "()\n";
-    code += OffsetPrefix(field);
+    code += " = fb.GetSubFun(";
+    code += NumToString(field.value.offset);
+    code += ",'";
+    code += TypeNameWithNamespace(field);
+    code += "',";
+
     if (field.value.type.struct_def->fixed) {
-      code +=
-          std::string(Indent) + Indent + "local x = o + " + SelfDataPos + "\n";
+        code += "false";
     } else {
-      code += std::string(Indent) + Indent + "local x = " + SelfData +
-              ":Indirect(o + " + SelfDataPos + ")\n";
+        code += "true";
     }
-    code += std::string(Indent) + Indent + "local obj = require('" +
-            TypeNameWithNamespace(field) + "').New()\n";
-    code +=
-        std::string(Indent) + Indent + "obj(" + SelfDataBytes + ", x)\n";
-    code += std::string(Indent) + Indent + "return obj\n";
-    code += std::string(Indent) + End;
-    code += EndFunc;
+    code += ")\n\n";
   }
 
   // Get the value of a string.
   void GetStringField(const StructDef &struct_def, const FieldDef &field,
                       std::string *code_ptr) {
     std::string &code = *code_ptr;
-    GenReceiver(struct_def, code_ptr);
+    GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += "()\n";
-    code += OffsetPrefix(field);
-    code +=
-        std::string(Indent) + Indent + "return " + GenGetter(field.value.type);
-    code += std::string("o + ") + SelfDataPos + ")\n";
-    code += std::string(Indent) + End;
-    code += EndFunc;
+
+    code += " = fb.GetStringFun(";
+    code += NumToString(field.value.offset);
+    code += ")\n\n";
   }
 
   // Get the value of a union from an object.
@@ -298,7 +260,7 @@ class LuaGenerator : public BaseGenerator {
     code +=
         std::string(Indent) + Indent +
         "local obj = "
-        "flatbuffers.view.New(flatbuffers.binaryarray.New(0), 0)\n";
+        "fb.view.New(fb.binaryArray.New(0), 0)\n";
     code += std::string(Indent) + Indent + GenGetter(field.value.type) +
             "obj, o)\n";
     code += std::string(Indent) + Indent + "return obj\n";
@@ -348,9 +310,7 @@ class LuaGenerator : public BaseGenerator {
           std::string(Indent) + Indent + "x = " + SelfData + ":Indirect(x)\n";
     }
     code += std::string(Indent) + Indent + "local obj = require('" +
-            TypeNameWithNamespace(field) + "').New()\n";
-    code +=
-        std::string(Indent) + Indent + "obj(" + SelfDataBytes + ", x)\n";
+            TypeNameWithNamespace(field) + "').__New(" + SelfDataBytes + ", x)\n";
     code += std::string(Indent) + Indent + "return obj\n";
     code += std::string(Indent) + End;
 
@@ -448,17 +408,6 @@ class LuaGenerator : public BaseGenerator {
     code += EndFunc;
   }
 
-  // Access a byte/ubyte vector as a string
-  void AccessByteVectorAsString(const StructDef &struct_def,
-                                const FieldDef &field, std::string *code_ptr) {
-    std::string &code = *code_ptr;
-    GenReceiver(struct_def, code_ptr);
-    code += MakeCamel(NormalizedName(field));
-    code += "AsString(start, stop)\n";
-    code += std::string(Indent) + "return " + SelfData + ":VectorAsString(" +
-            NumToString(field.value.offset) + ", start, stop)\n";
-    code += EndFunc;
-  }
 
   // Begin the creator function signature.
   void BeginBuilderArgs(const StructDef &struct_def, std::string *code_ptr) {
@@ -553,7 +502,7 @@ class LuaGenerator : public BaseGenerator {
     code += NumToString(offset) + ", ";
     // todo: i don't need to cast in Lua, but am I missing something?
     //    if (!IsScalar(field.value.type.base_type) && (!struct_def.fixed)) {
-    //      code += "flatbuffers.N.UOffsetTFlags.py_type";
+    //      code += "N.UOffsetTFlags.py_type";
     //      code += "(";
     //      code += MakeCamel(NormalizedName(field), false) + ")";
     //    } else {
@@ -592,6 +541,11 @@ class LuaGenerator : public BaseGenerator {
     code += "function " + NormalizedMetaName(struct_def) + ":";
   }
 
+  void GenReceiverEx(const StructDef &struct_def, std::string *code_ptr) {
+    std::string &code = *code_ptr;
+    code += NormalizedMetaName(struct_def) + ".";
+  }
+
   // Generate a struct field, conditioned on its child type(s).
   void GenStructAccessor(const StructDef &struct_def, const FieldDef &field,
                          std::string *code_ptr) {
@@ -620,10 +574,6 @@ class LuaGenerator : public BaseGenerator {
             GetMemberOfVectorOfStruct(struct_def, field, code_ptr);
           } else {
             GetMemberOfVectorOfNonStruct(struct_def, field, code_ptr);
-            if (vectortype.base_type == BASE_TYPE_CHAR ||
-                vectortype.base_type == BASE_TYPE_UCHAR) {
-              AccessByteVectorAsString(struct_def, field, code_ptr);
-            }
           }
           break;
         }
@@ -667,7 +617,6 @@ class LuaGenerator : public BaseGenerator {
     if (!struct_def.fixed) {
       // Generate a special accessor for the table that has been declared as
       // the root type.
-      NewRootTypeFromBuffer(struct_def, code_ptr);
     }
 
     // Generate the Init method that sets the field in a pre-existing
@@ -713,7 +662,7 @@ class LuaGenerator : public BaseGenerator {
       case BASE_TYPE_UNION: return std::string(SelfData) + ":Union(";
       case BASE_TYPE_VECTOR: return GenGetter(type.VectorType());
       default:
-        return std::string(SelfData) + ":Get(flatbuffers.N." +
+        return std::string(SelfData) + ":Get(N." +
                MakeCamel(GenTypeGet(type)) + ", ";
     }
   }
@@ -745,7 +694,7 @@ class LuaGenerator : public BaseGenerator {
       case BASE_TYPE_STRUCT: return type.struct_def->name;
       case BASE_TYPE_UNION:
         // fall through
-      default: return "*flatbuffers.Table";
+      default: return "*fb.Table";
     }
   }
 
@@ -812,7 +761,7 @@ class LuaGenerator : public BaseGenerator {
     code += std::string(Comment) + FlatBuffersGeneratedWarning() + "\n\n";
     code += std::string(Comment) + "namespace: " + name_space_name + "\n\n";
     if (needs_imports) {
-      code += "local flatbuffers = require('flatbuffers')\n\n";
+      code += "local fb = require('flatbuffers')\nlocal N = fb.N\n\n";
     }
   }
 

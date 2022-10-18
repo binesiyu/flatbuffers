@@ -30,13 +30,14 @@ local function checkReadBuffer(buf, offset, sizePrefix)
         offset = offset + flatbuffers.N.Int32.bytewidth
     end
 
-    local mon = monster.GetRootAsMonster(buf, offset)
+    local mon = monster.__New(buf, offset,true)
     assert(mon.hp == 300, "Monster Hp is not 300")
     assert(mon.mana == 150, "Monster Mana is not 150")
     assert(mon.name == "Orc", "Monster Name is not MyMonster")
     assert(mon.pos.x == 10.0)
     assert(mon.pos.y == 2.0)
     assert(mon.pos.z == 3.0)
+    assert(mon.isnpc == true)
 
     local expected = {
         {w = 'axe', d = 100},
@@ -50,8 +51,7 @@ local function checkReadBuffer(buf, offset, sizePrefix)
 
     assert(mon.equipped_type == equipment.Weapon)
 
-    local unionWeapon = weapon.New()
-    unionWeapon(mon.equipped.bytes,mon.equipped.pos)
+    local unionWeapon = weapon.__New(mon.equipped.bytes,mon.equipped.pos)
     assert(unionWeapon.name == "bow")
     assert(unionWeapon.damage == 90)
 end
