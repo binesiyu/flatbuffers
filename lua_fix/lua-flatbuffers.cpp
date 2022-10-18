@@ -9,7 +9,6 @@ struct SizedString {
 
 class BinaryArray {
 public:
-    BinaryArray(uint32_t size) { data.resize(size); memset(data.data(), 0, size); }
     BinaryArray(SizedString str) { data.resize(str.size); memcpy(data.data(), str.string, str.size); }
 
     SizedString Slice(uint32_t startPos, uint32_t endPos) {
@@ -17,34 +16,14 @@ public:
         if (startPos > data.size()) startPos = (uint32_t)data.size();
         if (endPos < startPos) endPos = startPos;
         if (endPos > data.size()) endPos = (uint32_t)data.size();
-        return SizedString{ endPos - startPos, data.data() + startPos }; 
-    }
-
-    void Grow(uint32_t newSize) {
-        if (newSize < data.size()) return; // invalid args
-        uint32_t oldSize = (uint32_t)data.size();
-        uint32_t deltaSize = newSize - oldSize;
-        data.resize(newSize);
-        memmove(data.data() + deltaSize, data.data(), oldSize);
-    }
-
-    void Pad(uint32_t n, uint32_t startPos) {
-        if (startPos < 0 || startPos > data.size()) return; // invalid args
-        if (startPos + n > data.size()) n = (uint32_t)data.size() - startPos;
-        memset(data.data() + startPos, '\0', n);
-    }
-
-    void Set(SizedString value, uint32_t position) {
-        if (position < 0 || position > data.size()) return; // invalid args
-        if (position + value.size > data.size()) return; // invalid args
-        memcpy(data.data() + position, value.string, value.size);
+        return SizedString{ endPos - startPos, data.data() + startPos };
     }
 
     uint32_t Size() {
         return (uint32_t)data.size();
     }
 
-    char* Data(uint32_t position) {
+    const char* Data(uint32_t position) {
         if (position < 0 || position + 1 > data.size()) return nullptr; // invalid args
         return data.data() + position;
     }
@@ -103,9 +82,30 @@ public:
     uint32_t position;
 };
 
+enum ENumType {
+    ENumType_NORMAL = 0,
+    ENumType_Bool,
+    ENumType_Uint8,
+    ENumType_Uint16,
+    ENumType_Uint32,
+    ENumType_Uint64,
+    ENumType_Int8,
+    ENumType_Int16,
+    ENumType_Int32,
+    ENumType_Int64,
+    ENumType_Float32,
+    ENumType_Float64,
+    ENumType_MAX,
+};
+
 class NumType {
 public:
-    NumType(const char* name, int bytewidth, const char* packFmt) : name(name), bytewidth(bytewidth), packFmt(packFmt) {}
+    NumType(ENumType eType,const char* name, int bytewidth, const char* packFmt)
+    : type(eType)
+    , name(name)
+    , bytewidth(bytewidth)
+    , packFmt(packFmt) {}
+    ENumType type;
     const char* name;
     int bytewidth;
     const char* packFmt;
@@ -134,47 +134,61 @@ NumType* test_num_type(lua_State* L, int n, const char* name) {
     return nullptr;
 }
 
+NumType* get_num_type(lua_State* L, int n) {
+    void* userdata = lua_touserdata(L, n);
+    if (userdata != nullptr) return *(NumType**)userdata;
+    return nullptr;
+}
+
 static int num_type_unpack(lua_State* L) {
     BinaryArray* ba = check_binaryarray(L, 2);
     uint32_t offset = (uint32_t)luaL_checkinteger(L, 3);
-    void* ptr = ba->Data(offset);
+    void* ptr = (void*)ba->Data(offset);
 
-    NumType* num_type = nullptr;
-    if ((num_type = test_num_type(L, 1, "Bool"))) {
-        lua_pushinteger(L, *((uint8_t*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Uint8"))) {
-        lua_pushinteger(L, *((uint8_t*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Uint16"))) {
-        lua_pushinteger(L, *((uint16_t*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Uint32"))) {
-        lua_pushinteger(L, *((uint32_t*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Uint64"))) {
-        lua_pushinteger(L, *((uint64_t*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Int8"))) {
-        lua_pushinteger(L, *((int8_t*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Int16"))) {
-        lua_pushinteger(L, *((int16_t*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Int32"))) {
-        lua_pushinteger(L, *((int32_t*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Int64"))) {
-        lua_pushinteger(L, *((int64_t*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Float32"))) {
-        lua_pushinteger(L, *((float*)ptr));
-        return 1;
-    } else if ((num_type = test_num_type(L, 1, "Float64"))) {
-        lua_pushinteger(L, *((double*)ptr));
-        return 1;
+    NumType* num_type = get_num_type(L,1);
+    if(num_type)
+    {
+        switch(num_type->type)
+        {
+            case ENumType_Bool:
+                lua_pushinteger(L, *((uint8_t*)ptr));
+                return 1;
+            case ENumType_Uint8:
+                lua_pushinteger(L, *((uint8_t*)ptr));
+                return 1;
+            case ENumType_Uint16:
+                lua_pushinteger(L, *((uint16_t*)ptr));
+                return 1;
+            case ENumType_Uint32:
+                lua_pushinteger(L, *((uint32_t*)ptr));
+                return 1;
+            case ENumType_Uint64:
+                lua_pushinteger(L, *((uint64_t*)ptr));
+                return 1;
+            case ENumType_Int8:
+                lua_pushinteger(L, *((int8_t*)ptr));
+                return 1;
+            case ENumType_Int16:
+                lua_pushinteger(L, *((int16_t*)ptr));
+                return 1;
+            case ENumType_Int32:
+                lua_pushinteger(L, *((int32_t*)ptr));
+                return 1;
+            case ENumType_Int64:
+                lua_pushinteger(L, *((int64_t*)ptr));
+                return 1;
+            case ENumType_Float32:
+                lua_pushinteger(L, *((float*)ptr));
+                return 1;
+            case ENumType_Float64:
+                lua_pushinteger(L, *((double*)ptr));
+                return 1;
+            default:
+                lua_pushliteral(L, "incorrect argument type");
+                lua_error(L);
+                return 0;
+        }
     }
-
     lua_pushliteral(L, "incorrect argument");
     lua_error(L);
     return 0;
@@ -217,10 +231,10 @@ static void register_num_type(lua_State* L, const char* name, NumType* num_type)
     lua_setfield(L, -1, "__index"); // []
 }
 
-static void num_type_new(lua_State* L, const char* name, int bytewidth, const char* packFmt) {
+static void num_type_new(lua_State* L,ENumType eType, const char* name, int bytewidth, const char* packFmt) {
     // assume stack top is a table of num_type [num_type_table]
     NumType** udata = (NumType**)lua_newuserdata(L, sizeof(NumType*));
-    *udata = new NumType(name, bytewidth, packFmt);
+    *udata = new NumType(eType,name, bytewidth, packFmt);
     register_num_type(L, name, *udata);
     luaL_getmetatable(L, name);
     lua_setmetatable(L, -2);
@@ -230,18 +244,17 @@ static void num_type_new(lua_State* L, const char* name, int bytewidth, const ch
 static void new_num_types_table(lua_State* L) {
     lua_newtable(L);
 
-    num_type_new(L, "Bool", 1, "<b");
-    num_type_new(L, "Uint8", 1, "<I1");
-    num_type_new(L, "Uint16", 2, "<I2");
-    num_type_new(L, "Uint32", 4, "<I4");
-    num_type_new(L, "Uint64", 8, "<I8");
-    num_type_new(L, "Int8", 1, "<i1");
-    num_type_new(L, "Int16", 2, "<i2");
-    num_type_new(L, "Int32", 4, "<i4");
-    num_type_new(L, "Int64", 8, "<i8");
-    
-    num_type_new(L, "Float32", 4, "<f");
-    num_type_new(L, "Float64", 8, "<d");
+    num_type_new(L,ENumType_Bool,  "Bool", 1, "<b");
+    num_type_new(L,ENumType_Uint8,  "Uint8", 1, "<I1");
+    num_type_new(L,ENumType_Uint16,  "Uint16", 2, "<I2");
+    num_type_new(L,ENumType_Uint32,  "Uint32", 4, "<I4");
+    num_type_new(L,ENumType_Uint64,  "Uint64", 8, "<I8");
+    num_type_new(L,ENumType_Int8,  "Int8", 1, "<i1");
+    num_type_new(L,ENumType_Int16,  "Int16", 2, "<i2");
+    num_type_new(L,ENumType_Int32,  "Int32", 4, "<i4");
+    num_type_new(L,ENumType_Int64,  "Int64", 8, "<i8");
+    num_type_new(L,ENumType_Float32,  "Float32", 4, "<f");
+    num_type_new(L,ENumType_Float64,  "Float64", 8, "<d");
 
     lua_pushliteral(L, "Uint32");
     lua_gettable(L, -2);
@@ -257,15 +270,7 @@ static void new_num_types_table(lua_State* L) {
 }
 
 static int ba_new(lua_State* L) {
-    if (lua_isnumber(L, 1)) {
-        uint32_t size = (uint32_t)lua_tointeger(L, 1);
-        BinaryArrayRef* ba_ref = (BinaryArrayRef*)lua_newuserdata(L, sizeof(BinaryArrayRef));
-        ba_ref->ptr = new BinaryArray(size);
-        ba_ref->is_owner = true;
-        luaL_getmetatable(L, "ba_mt");
-        lua_setmetatable(L, -2);
-        return 1;
-    } else if (lua_isstring(L, 1)) {
+    if (lua_isstring(L, 1)) {
         SizedString str;
         str.string = lua_tolstring(L, 1, &str.size);
         BinaryArrayRef* ba_ref = (BinaryArrayRef*)lua_newuserdata(L, sizeof(BinaryArrayRef));
@@ -289,29 +294,6 @@ static int ba_slice(lua_State* L) {
     return 1;
 }
 
-static int ba_grow(lua_State* L) {
-    BinaryArray* ba = check_binaryarray(L, 1);
-    uint32_t newSize = (uint32_t)luaL_checkinteger(L, 2);
-    ba->Grow(newSize);
-    return 0;
-}
-
-static int ba_pad(lua_State* L) {
-    BinaryArray* ba = check_binaryarray(L, 1);
-    uint32_t n = (uint32_t)luaL_checkinteger(L, 2);
-    uint32_t startPos = (uint32_t)luaL_checkinteger(L, 3);
-    ba->Pad(n, startPos);
-    return 0;
-}
-
-static int ba_set(lua_State* L) {
-    BinaryArray* ba = check_binaryarray(L, 1);
-    SizedString value;
-    value.string = luaL_checklstring(L, 2, &value.size);
-    uint32_t position = (uint32_t)luaL_checkinteger(L, 3);
-    ba->Set(value, position);
-    return 0;
-}
 
 static int ba_size(lua_State* L) {
     BinaryArray* ba = check_binaryarray(L, 1);
@@ -329,9 +311,6 @@ static int ba_gc(lua_State* L) {
 static void register_binaryarray(lua_State* L) {
     luaL_Reg binaryarray_reg[] = {
         { "Slice", ba_slice },
-        { "Grow", ba_grow },
-        { "Pad", ba_pad },
-        { "Set", ba_set },
         { "__len", ba_size },
         { "__gc", ba_gc },
         { nullptr, nullptr }
@@ -404,40 +383,49 @@ static int view_get(lua_State* L) {
     View* view = check_view(L, 1);
     uint32_t offset = (uint32_t)luaL_checkinteger(L, 3);
 
-    NumType* num_type = nullptr;
-    if ((num_type = test_num_type(L, 2, "Bool"))) {
-        lua_pushinteger(L, view->Get<uint8_t>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Uint8"))) {
-        lua_pushinteger(L, view->Get<uint8_t>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Uint16"))) {
-        lua_pushinteger(L, view->Get<uint16_t>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Uint32"))) {
-        lua_pushinteger(L, view->Get<uint32_t>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Uint64"))) {
-        lua_pushinteger(L, view->Get<uint64_t>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Int8"))) {
-        lua_pushinteger(L, view->Get<int8_t>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Int16"))) {
-        lua_pushinteger(L, view->Get<int16_t>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Int32"))) {
-        lua_pushinteger(L, view->Get<int32_t>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Int64"))) {
-        lua_pushinteger(L, view->Get<int64_t>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Float32"))) {
-        lua_pushinteger(L, view->Get<float>(offset));
-        return 1;
-    } else if ((num_type = test_num_type(L, 2, "Float64"))) {
-        lua_pushinteger(L, view->Get<double>(offset));
-        return 1;
+    NumType* num_type = get_num_type(L,2);
+    if(num_type)
+    {
+        switch(num_type->type)
+        {
+            case ENumType_Bool:
+                lua_pushinteger(L, view->Get<uint8_t>(offset));
+                return 1;
+            case ENumType_Uint8:
+                lua_pushinteger(L, view->Get<uint8_t>(offset));
+                return 1;
+            case ENumType_Uint16:
+                lua_pushinteger(L, view->Get<uint16_t>(offset));
+                return 1;
+            case ENumType_Uint32:
+                lua_pushinteger(L, view->Get<uint32_t>(offset));
+                return 1;
+            case ENumType_Uint64:
+                lua_pushinteger(L, view->Get<uint64_t>(offset));
+                return 1;
+            case ENumType_Int8:
+                lua_pushinteger(L, view->Get<int8_t>(offset));
+                return 1;
+            case ENumType_Int16:
+                lua_pushinteger(L, view->Get<int16_t>(offset));
+                return 1;
+            case ENumType_Int32:
+                lua_pushinteger(L, view->Get<int32_t>(offset));
+                return 1;
+            case ENumType_Int64:
+                lua_pushinteger(L, view->Get<int64_t>(offset));
+                return 1;
+            case ENumType_Float32:
+                lua_pushinteger(L, view->Get<float>(offset));
+                return 1;
+            case ENumType_Float64:
+                lua_pushinteger(L, view->Get<double>(offset));
+                return 1;
+            default:
+                lua_pushliteral(L, "incorrect argument type");
+                lua_error(L);
+                return 0;
+        }
     }
 
     lua_pushliteral(L, "incorrect argument");

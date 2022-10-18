@@ -40,9 +40,5 @@ function Weapon:damage()
     end
     return 0
 end
-function Weapon.Start(builder) builder:StartObject(2) end
-function Weapon.AddName(builder, name) builder:PrependUOffsetTRelativeSlot(0, name, 0) end
-function Weapon.AddDamage(builder, damage) builder:PrependInt16Slot(1, damage, 0) end
-function Weapon.End(builder) return builder:EndObject() end
 
 return Weapon -- return the module

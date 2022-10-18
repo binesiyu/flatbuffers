@@ -27,12 +27,5 @@ end
 function Vec3:z()
     return self.view:Get(flatbuffers.N.Float32, self.view.pos + 8)
 end
-function Vec3.CreateVec3(builder, x, y, z)
-    builder:Prep(4, 12)
-    builder:PrependFloat32(z)
-    builder:PrependFloat32(y)
-    builder:PrependFloat32(x)
-    return builder:Offset()
-end
 
 return Vec3 -- return the module

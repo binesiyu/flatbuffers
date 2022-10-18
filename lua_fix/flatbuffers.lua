@@ -2,7 +2,6 @@ local m = {}
 
 _G.flatbuffersnative = require("flatbuffersnative")
 
-m.Builder = require("flatbuffers.builder").New
 m.N = _G.flatbuffersnative.N
 
 m.binaryArray = {}

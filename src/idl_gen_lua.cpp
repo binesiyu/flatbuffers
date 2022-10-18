@@ -681,6 +681,7 @@ class LuaGenerator : public BaseGenerator {
       GenStructAccessor(struct_def, field, code_ptr);
     }
 
+      /*
     if (struct_def.fixed) {
       // create a struct constructor function
       GenStructBuilder(struct_def, code_ptr);
@@ -688,6 +689,7 @@ class LuaGenerator : public BaseGenerator {
       // Create a set of functions that allow table construction.
       GenTableBuilders(struct_def, code_ptr);
     }
+       */
   }
 
   // Generate enum declarations.

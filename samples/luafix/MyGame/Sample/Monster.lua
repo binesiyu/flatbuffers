@@ -236,20 +236,5 @@ function Monster:pathLength()
     end
     return 0
 end
-function Monster.Start(builder) builder:StartObject(11) end
-function Monster.AddPos(builder, pos) builder:PrependStructSlot(0, pos, 0) end
-function Monster.AddMana(builder, mana) builder:PrependInt16Slot(1, mana, 150) end
-function Monster.AddHp(builder, hp) builder:PrependInt16Slot(2, hp, 100) end
-function Monster.AddName(builder, name) builder:PrependUOffsetTRelativeSlot(3, name, 0) end
-function Monster.AddInventory(builder, inventory) builder:PrependUOffsetTRelativeSlot(5, inventory, 0) end
-function Monster.StartInventoryVector(builder, numElems) return builder:StartVector(1, numElems, 1) end
-function Monster.AddColor(builder, color) builder:PrependInt8Slot(6, color, 2) end
-function Monster.AddWeapons(builder, weapons) builder:PrependUOffsetTRelativeSlot(7, weapons, 0) end
-function Monster.StartWeaponsVector(builder, numElems) return builder:StartVector(4, numElems, 4) end
-function Monster.AddEquippedType(builder, equippedType) builder:PrependUint8Slot(8, equippedType, 0) end
-function Monster.AddEquipped(builder, equipped) builder:PrependUOffsetTRelativeSlot(9, equipped, 0) end
-function Monster.AddPath(builder, path) builder:PrependUOffsetTRelativeSlot(10, path, 0) end
-function Monster.StartPathVector(builder, numElems) return builder:StartVector(12, numElems, 4) end
-function Monster.End(builder) return builder:EndObject() end
 
 return Monster -- return the module
