@@ -9,6 +9,7 @@ struct SizedString {
 
 class BinaryArray {
 public:
+    BinaryArray(uint32_t size) { data.resize(size); memset(data.data(), 0, size); }
     BinaryArray(SizedString str) { data.resize(str.size); memcpy(data.data(), str.string, str.size); }
 
     SizedString Slice(uint32_t startPos, uint32_t endPos) {
@@ -275,6 +276,15 @@ static int ba_new(lua_State* L) {
         str.string = lua_tolstring(L, 1, &str.size);
         BinaryArrayRef* ba_ref = (BinaryArrayRef*)lua_newuserdata(L, sizeof(BinaryArrayRef));
         ba_ref->ptr = new BinaryArray(str);
+        ba_ref->is_owner = true;
+        luaL_getmetatable(L, "ba_mt");
+        lua_setmetatable(L, -2);
+        return 1;
+    }
+    else if (lua_isnumber(L, 1)) {
+        uint32_t size = (uint32_t)lua_tointeger(L, 1);
+        BinaryArrayRef* ba_ref = (BinaryArrayRef*)lua_newuserdata(L, sizeof(BinaryArrayRef));
+        ba_ref->ptr = new BinaryArray(size);
         ba_ref->is_owner = true;
         luaL_getmetatable(L, "ba_mt");
         lua_setmetatable(L, -2);
