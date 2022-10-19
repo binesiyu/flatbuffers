@@ -36,11 +36,30 @@ const char *EndFunc = "end\n";
 const char *SelfData = "self.__view";
 const char *SelfDataPos = "self.__view.pos";
 const char *SelfDataBytes = "self.__view.bytes";
+const char *Root = "Root";
 
 std::string MakeCamel2(const std::string &in, bool first = true);
 
 std::string MakeCamel2(const std::string &in, bool first) {
   return in;
+}
+
+static bool hasEnding (std::string const &fullString, std::string const &ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+
+bool isStructsRoot(const std::string& name)
+{
+    return hasEnding(name,Root);
+}
+
+std::string getStructsNameRoot(const std::string& name)
+{
+    return name.substr(0,name.length()-4);
 }
 
 class LuaGenerator : public BaseGenerator {
@@ -641,14 +660,51 @@ class LuaGenerator : public BaseGenerator {
     }
     return true;
   }
-
+    typedef std::map<std::string,StructDef*> MAP_DEF_STRING;
+    typedef std::map<StructDef*,StructDef*> MAP_DEF;
   bool generateStructs() {
+    MAP_DEF_STRING mapType;
+    MAP_DEF mapTypeDef;
+    for (auto it = parser_.structs_.vec.begin();
+           it != parser_.structs_.vec.end(); ++it) {
+        auto &struct_def = **it;
+        mapType[struct_def.name] = *it;
+    }
+      
+    for (auto it = parser_.structs_.vec.begin();
+             it != parser_.structs_.vec.end(); ++it) {
+      auto &struct_def = **it;
+      if(isStructsRoot(struct_def.name))
+      {
+          auto itroot = mapType.find(getStructsNameRoot(struct_def.name));
+          if(itroot != mapType.end())
+          {
+              mapTypeDef[itroot->second] = *it;
+          }
+      }
+    }
+      
     for (auto it = parser_.structs_.vec.begin();
          it != parser_.structs_.vec.end(); ++it) {
       auto &struct_def = **it;
-      std::string declcode;
-      GenStruct(struct_def, &declcode);
-      if (!SaveType(struct_def, declcode, true)) return false;
+        if(isStructsRoot(struct_def.name))
+        {
+            continue;
+        }
+        std::string declcode;
+        auto itroot = mapTypeDef.find(*it);
+        if(itroot != mapTypeDef.end())
+        {
+            GenStruct(struct_def, &declcode);
+            
+            if (!SaveType(struct_def, declcode, true,true)) return false;
+        }
+        else
+        {
+            GenStruct(struct_def, &declcode);
+            if (!SaveType(struct_def, declcode, true,false)) return false;
+        }
+      
     }
     return true;
   }
@@ -666,7 +722,7 @@ class LuaGenerator : public BaseGenerator {
 
   // Save out the generated code for a Lua Table type.
   bool SaveType(const Definition &def, const std::string &classcode,
-                bool needs_imports) {
+                bool needs_imports,bool hasRoot = false) {
     if (!classcode.length()) return true;
 
     std::string namespace_dir = path_;
@@ -682,8 +738,17 @@ class LuaGenerator : public BaseGenerator {
     BeginFile(LastNamespacePart(*def.defined_namespace), needs_imports, &code);
     code += classcode;
     code += "\n";
+      
+    if(hasRoot)
+    {
+        code +=
+            "return F.createCfg('" + NormalizedName(def) + "'," + NormalizedName(def) + ") " + Comment + "return the Cfg";
+    }
+    else
+    {
     code +=
         "return " + NormalizedName(def) + " " + Comment + "return the module";
+    }
     std::string filename =
         NamespaceDir(*def.defined_namespace) + NormalizedName(def) + ".lua";
     return SaveFile(filename.c_str(), code, false);

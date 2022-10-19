@@ -273,7 +273,7 @@ function F.FunArray(size,ntype,ntypesize,key,default)
     end
 end
 
-function F.FunArraySub(size,path,ntypesize,key,isTable)
+function F.FunArrayCfg(size,cfg,ntypesize,key,isTable)
     return function(self)
         local ret = rawget(self, key)
         if ret then
@@ -297,7 +297,6 @@ function F.FunArraySub(size,path,ntypesize,key,isTable)
                             if isTable then
                                 x = self.__view:Indirect(x)
                             end
-                            local cfg = require(path)
                             local obj = cfg(self.__view.bytes, x)
                             return obj
                         end
@@ -312,6 +311,30 @@ function F.FunArraySub(size,path,ntypesize,key,isTable)
         rawset(self, key, ret)
         return ret
     end
+end
+
+function F.FunArraySub(size,path,ntypesize,key,isTable)
+    local cfg = require(path)
+    return F.FunArrayCfg(size,cfg,ntypesize,key,isTable)
+end
+
+local function getFileData(name)
+    local f = assert(io.open('monsterdata.bin', 'rb'))
+    local fileData = f:read("*a")
+    f:close()
+    return fileData
+end
+
+function F.createCfg(name,mt)
+    local MonsterRoot = F.NewCfg()
+    MonsterRoot.items = F.FunArrayCfg(4,mt,4,'_fb_items_arr',true)
+
+    local fileData = getFileData(name)
+    if fileData then
+        local data = MonsterRoot(m.binaryArray.New(fileData), 0,true)
+        return data and data.items or {}
+    end
+    return {}
 end
 
 return m

@@ -31,4 +31,4 @@ Monster.path = F.FunArraySub(24,'MyGame.Sample.Vec3',12,'_fb_path_arr',false)
 Monster.isnpc = F.FunFieldBool(26,N.Bool,false)
 
 
-return Monster -- return the module
+return F.createCfg('Monster',Monster) -- return the Cfg

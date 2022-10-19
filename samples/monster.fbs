@@ -31,4 +31,8 @@ table Weapon {
   damage:short;
 }
 
-root_type Monster;
+table MonsterRoot{
+  items:[Monster];
+}
+
+root_type MonsterRoot;
