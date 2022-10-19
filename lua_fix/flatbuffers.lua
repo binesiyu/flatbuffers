@@ -41,7 +41,7 @@ function m.New(mt)
     end
 end
 
-function m.GetFieldFun(size,ntype,default)
+function m.FunField(size,ntype,default)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
@@ -51,7 +51,7 @@ function m.GetFieldFun(size,ntype,default)
     end
 end
 
-function m.GetFieldFunBool(size,ntype,default)
+function m.FunFieldBool(size,ntype,default)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
@@ -61,7 +61,7 @@ function m.GetFieldFunBool(size,ntype,default)
     end
 end
 
-function m.GetStringFun(size)
+function m.FunFieldString(size)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
@@ -70,7 +70,7 @@ function m.GetStringFun(size)
     end
 end
 
-function m.GetUnionFun(size)
+function m.FunUnion(size)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
@@ -81,7 +81,7 @@ function m.GetUnionFun(size)
     end
 end
 
-function m.GetSubFun(size,path,isTable)
+function m.FunSub(size,path,isTable)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
@@ -108,7 +108,7 @@ local function commonipairs(t)
         end
 end
 
-function m.GetArrayFun(size,ntype,ntypesize,key,default)
+function m.FunArray(size,ntype,ntypesize,key,default)
     return function(self)
         local ret = rawget(self, key)
         if ret then
@@ -144,7 +144,7 @@ function m.GetArrayFun(size,ntype,ntypesize,key,default)
     end
 end
 
-function m.GetArraySubFun(size,path,ntypesize,key,isTable)
+function m.FunArraySub(size,path,ntypesize,key,isTable)
     return function(self)
         local ret = rawget(self, key)
         if ret then

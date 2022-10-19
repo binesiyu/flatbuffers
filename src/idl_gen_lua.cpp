@@ -168,10 +168,10 @@ class LuaGenerator : public BaseGenerator {
 
     auto is_bool = field.value.type.base_type == BASE_TYPE_BOOL;
     if (is_bool) {
-        code += " = fb.GetFieldFunBool(";
+        code += " = fb.FunFieldBool(";
     }
     else {
-        code += " = fb.GetFieldFun(";
+        code += " = fb.FunField(";
     }
 
     code += NumToString(field.value.offset);
@@ -213,7 +213,7 @@ class LuaGenerator : public BaseGenerator {
     std::string &code = *code_ptr;
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += " = fb.GetSubFun(";
+    code += " = fb.FunSub(";
     code += NumToString(field.value.offset);
     code += ",'";
     code += TypeNameWithNamespace(field);
@@ -234,7 +234,7 @@ class LuaGenerator : public BaseGenerator {
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
 
-    code += " = fb.GetStringFun(";
+    code += " = fb.FunFieldString(";
     code += NumToString(field.value.offset);
     code += ")\n\n";
   }
@@ -246,7 +246,7 @@ class LuaGenerator : public BaseGenerator {
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
 
-    code += " = fb.GetUnionFun(";
+    code += " = fb.FunUnion(";
     code += NumToString(field.value.offset);
     code += ")\n\n";
   }
@@ -260,7 +260,7 @@ class LuaGenerator : public BaseGenerator {
     std::string arr_key = "_fb_" + MakeCamel2(NormalizedName(field)) + "_arr";
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += " = fb.GetArraySubFun(";
+    code += " = fb.FunArraySub(";
     code += NumToString(field.value.offset);
     code += ",'";
     code += TypeNameWithNamespace(field);
@@ -289,7 +289,7 @@ class LuaGenerator : public BaseGenerator {
     std::string arr_key = "_fb_" + MakeCamel2(NormalizedName(field)) + "_arr";
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += " = fb.GetArrayFun(";
+    code += " = fb.FunArray(";
     code += NumToString(field.value.offset);
     code += ",N.";
     code += MakeCamel(GenTypeGet(field.value.type));

@@ -9,9 +9,9 @@ local Weapon = {} -- the module
 
 Weapon.__New = fb.New(Weapon)
 
-Weapon.name = fb.GetStringFun(4)
+Weapon.name = fb.FunFieldString(4)
 
-Weapon.damage = fb.GetFieldFun(6,N.Int16,0)
+Weapon.damage = fb.FunField(6,N.Int16,0)
 
 
 return Weapon -- return the module
