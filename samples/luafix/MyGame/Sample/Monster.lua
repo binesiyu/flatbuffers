@@ -17,171 +17,18 @@ Monster.hp = fb.GetFieldFun(8,N.Int16,100)
 
 Monster.name = fb.GetStringFun(10)
 
-function Monster:inventory()
-local ret = rawget(self, "_fb_inventory_arr")
-if ret then
-    return ret
-end
-ret = setmetatable({}, {
-__len = function(t)
-    local l = rawget(t, "_fb_inventory_len")
-    if l then return l end
-    local f = rawget(Monster, "inventoryLength")
-    l = f(t)
-    rawset(t, "_fb_inventory_len", l)
-    return l
-end,
+Monster.inventory = fb.GetArrayFun(14,N.Uint8,1,'_fb_inventory_arr',0)
 
-__index = function(t, j)
-    if type(j) == 'number' then
-    local o = self.__view:Offset(14)
-    if o ~= 0 then
-        local a = self.__view:Vector(o)
-        return self.__view:Get(N.Uint8, a + ((j-1) * 1))
-    end
-    return 0
-    else
-        return rawget(self, j)
-    end
-end,
-
-__ipairs = function(t)
-    local idx = 0
-    local l = #t
-    return function()
-        idx = idx + 1
-        if idx <= l then
-            return idx, t[idx]
-        end
-    end
-end
-}
-)
-rawset(self, "_fb_inventory_arr", ret)
-return ret
-end
-function Monster:inventoryLength()
-    local o = self.__view:Offset(14)
-    if o ~= 0 then
-        return self.__view:VectorLen(o)
-    end
-    return 0
-end
 Monster.color = fb.GetFieldFun(16,N.Int8,2)
 
-function Monster:weapons()
-local ret = rawget(self, "_fb_weapons_arr")
-if ret then
-    return ret
-end
-ret = setmetatable({}, {
-__len = function(t)
-    local l = rawget(t, "_fb_weapons_len")
-    if l then return l end
-    local f = rawget(Monster, "weaponsLength")
-    l = f(t)
-    rawset(t, "_fb_weapons_len", l)
-    return l
-end,
+Monster.weapons = fb.GetArraySubFun(18,'MyGame.Sample.Weapon',4,'_fb_weapons_arr',true)
 
-__index = function(t, j)
-    if type(j) == 'number' then
-    local o = self.__view:Offset(18)
-    if o ~= 0 then
-        local x = self.__view:Vector(o)
-        x = x + ((j-1) * 4)
-        x = self.__view:Indirect(x)
-        local obj = require('MyGame.Sample.Weapon').__New(self.__view.bytes, x)
-        return obj
-    end
-    else
-        return rawget(self, j)
-    end
-end,
-
-__ipairs = function(t)
-    local idx = 0
-    local l = #t
-    return function()
-        idx = idx + 1
-        if idx <= l then
-            return idx, t[idx]
-        end
-    end
-end
-}
-)
-rawset(self, "_fb_weapons_arr", ret)
-return ret
-end
-function Monster:weaponsLength()
-    local o = self.__view:Offset(18)
-    if o ~= 0 then
-        return self.__view:VectorLen(o)
-    end
-    return 0
-end
 Monster.equipped_type = fb.GetFieldFun(20,N.Uint8,0)
 
-function Monster:equipped()
-    local o = self.__view:Offset(22)
-    if o ~= 0 then
-        local obj = fb.view.NewEmpty()
-        self.__view:Union(obj, o)
-        return obj
-    end
-end
-function Monster:path()
-local ret = rawget(self, "_fb_path_arr")
-if ret then
-    return ret
-end
-ret = setmetatable({}, {
-__len = function(t)
-    local l = rawget(t, "_fb_path_len")
-    if l then return l end
-    local f = rawget(Monster, "pathLength")
-    l = f(t)
-    rawset(t, "_fb_path_len", l)
-    return l
-end,
+Monster.equipped = fb.GetUnionFun(22)
 
-__index = function(t, j)
-    if type(j) == 'number' then
-    local o = self.__view:Offset(24)
-    if o ~= 0 then
-        local x = self.__view:Vector(o)
-        x = x + ((j-1) * 12)
-        local obj = require('MyGame.Sample.Vec3').__New(self.__view.bytes, x)
-        return obj
-    end
-    else
-        return rawget(self, j)
-    end
-end,
+Monster.path = fb.GetArraySubFun(24,'MyGame.Sample.Vec3',12,'_fb_path_arr',false)
 
-__ipairs = function(t)
-    local idx = 0
-    local l = #t
-    return function()
-        idx = idx + 1
-        if idx <= l then
-            return idx, t[idx]
-        end
-    end
-end
-}
-)
-rawset(self, "_fb_path_arr", ret)
-return ret
-end
-function Monster:pathLength()
-    local o = self.__view:Offset(24)
-    if o ~= 0 then
-        return self.__view:VectorLen(o)
-    end
-    return 0
-end
 Monster.isnpc = fb.GetFieldFunBool(26,N.Bool,false)
 
 

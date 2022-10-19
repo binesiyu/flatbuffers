@@ -22,11 +22,11 @@ local function checkReadBuffer(buf, offset, sizePrefix)
     print(s)
 
 
-    collectgarbage("collect")
-    print("释放前lua:", collectgarbage("count"))
+    -- collectgarbage("collect")
+    -- print("释放前lua:", collectgarbage("count"))
     local mon = monster.__New(flatbuffers.binaryArray.New(buf), offset,true)
     collectgarbage("collect")
-    print("释放后lua:", collectgarbage("count"))
+    -- print("释放后lua:", collectgarbage("count"))
 
     assert(mon.hp == 300, "Monster Hp is not 300")
     assert(mon.mana == 150, "Monster Mana is not 150")
@@ -41,7 +41,7 @@ local function checkReadBuffer(buf, offset, sizePrefix)
         {w = 'bow', d = 90}
     }
 
-    for i=1,mon.weaponsLength do
+    for i=1,#mon.weapons do
        assert(mon.weapons[i].name == expected[i].w)
        assert(mon.weapons[i].damage == expected[i].d)
     end

@@ -243,29 +243,12 @@ class LuaGenerator : public BaseGenerator {
   void GetUnionField(const StructDef &struct_def, const FieldDef &field,
                      std::string *code_ptr) {
     std::string &code = *code_ptr;
-    GenReceiver(struct_def, code_ptr);
-    code += MakeCamel2(NormalizedName(field)) + "()\n";
-    code += OffsetPrefix(field);
+    GenReceiverEx(struct_def, code_ptr);
+    code += MakeCamel2(NormalizedName(field));
 
-    // TODO(rw): this works and is not the good way to it:
-    // bool is_native_table = TypeName(field) == "*flatbuffers.Table";
-    // if (is_native_table) {
-    //  code += std::string(Indent) + Indent + "from flatbuffers.table import
-    //  Table\n";
-    //} else {
-    //  code += std::string(Indent) + Indent +
-    //  code += "from ." + TypeName(field) + " import " + TypeName(field) +
-    //  "\n";
-    //}
-    code +=
-        std::string(Indent) + Indent +
-        "local obj = "
-        "fb.view.NewEmpty()\n";
-    code += std::string(Indent) + Indent + GenGetter(field.value.type) +
-            "obj, o)\n";
-    code += std::string(Indent) + Indent + "return obj\n";
-    code += std::string(Indent) + End;
-    code += EndFunc;
+    code += " = fb.GetUnionFun(";
+    code += NumToString(field.value.offset);
+    code += ")\n\n";
   }
 
   // Get the value of a vector's struct member.
@@ -275,67 +258,24 @@ class LuaGenerator : public BaseGenerator {
     auto vectortype = field.value.type.VectorType();
 
     std::string arr_key = "_fb_" + MakeCamel2(NormalizedName(field)) + "_arr";
-    std::string len_key = "_fb_" + MakeCamel2(NormalizedName(field)) + "_len";
-
-    GenReceiver(struct_def, code_ptr);
+    GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += "()\n";
-    code += "local ret = rawget(self, \"" + arr_key + "\")\n"
-            "if ret then\n"
-            "    return ret\n"
-            "end\n";
-    
-    code += "ret = setmetatable({}, "
-            "{\n"
-            "__len = function(t)\n"
-            "    local l = rawget(t, \"" + len_key + "\")\n"
-            "    if l then return l end\n"
-            "    local f = rawget(" + NormalizedMetaName(struct_def) + 
-            ", \"" +  MakeCamel2(NormalizedName(field)) + "Length\")\n"
-            "    l = f(t)\n"
-            "    rawset(t, \"" + len_key + "\", l)\n"
-            "    return l\n"
-            "end,\n\n";
-
-    code += "__index = function(t, j)\n"
-            "    if type(j) == 'number' then\n";
-
-    code += OffsetPrefix(field);
-    code +=
-        std::string(Indent) + Indent + "local x = " + SelfData + ":Vector(o)\n";
-    code += std::string(Indent) + Indent + "x = x + ((j-1) * ";
-    code += NumToString(InlineSize(vectortype)) + ")\n";
+    code += " = fb.GetArraySubFun(";
+    code += NumToString(field.value.offset);
+    code += ",'";
+    code += TypeNameWithNamespace(field);
+    code += "',";
+    code += NumToString(InlineSize(vectortype));
+    code += ",'";
+    code += arr_key;
+    code += "',";
     if (!(vectortype.struct_def->fixed)) {
-      code +=
-          std::string(Indent) + Indent + "x = " + SelfData + ":Indirect(x)\n";
+      code += "true";
+    } else {
+      code += "false";
     }
-    code += std::string(Indent) + Indent + "local obj = require('" +
-            TypeNameWithNamespace(field) + "').__New(" + SelfDataBytes + ", x)\n";
-    code += std::string(Indent) + Indent + "return obj\n";
-    code += std::string(Indent) + End;
+    code += ")\n\n";
 
-    code += "    else\n"
-            "        return rawget(self, j)\n"
-            "    end\n"
-            "end,\n\n";
-
-    code += "__ipairs = function(t)\n"
-            "    local idx = 0\n"
-            "    local l = #t\n"
-            "    return function()\n"
-            "        idx = idx + 1\n"
-            "        if idx <= l then\n"
-            "            return idx, t[idx]\n"
-            "        end\n"
-            "    end\n"
-            "end\n"
-            "}\n";
-
-    code += ")\n"
-            "rawset(self, \"" + arr_key + "\", ret)\n"
-            "return ret\n";
-    
-    code += EndFunc;
   }
 
   // Get the value of a vector's non-struct member. Uses a named return
@@ -347,65 +287,24 @@ class LuaGenerator : public BaseGenerator {
     auto vectortype = field.value.type.VectorType();
 
     std::string arr_key = "_fb_" + MakeCamel2(NormalizedName(field)) + "_arr";
-    std::string len_key = "_fb_" + MakeCamel2(NormalizedName(field)) + "_len";
-
-    GenReceiver(struct_def, code_ptr);
+    GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += "()\n";
-    code += "local ret = rawget(self, \"" + arr_key + "\")\n"
-            "if ret then\n"
-            "    return ret\n"
-            "end\n";
-    
-    code += "ret = setmetatable({}, "
-            "{\n"
-            "__len = function(t)\n"
-            "    local l = rawget(t, \"" + len_key + "\")\n"
-            "    if l then return l end\n"
-            "    local f = rawget(" + NormalizedMetaName(struct_def) + 
-            ", \"" +  MakeCamel2(NormalizedName(field)) + "Length\")\n"
-            "    l = f(t)\n"
-            "    rawset(t, \"" + len_key + "\", l)\n"
-            "    return l\n"
-            "end,\n\n";
-
-    code += "__index = function(t, j)\n"
-            "    if type(j) == 'number' then\n";
-
-    code += OffsetPrefix(field);
-    code +=
-        std::string(Indent) + Indent + "local a = " + SelfData + ":Vector(o)\n";
-    code += std::string(Indent) + Indent;
-    code += "return " + GenGetter(field.value.type);
-    code += "a + ((j-1) * ";
-    code += NumToString(InlineSize(vectortype)) + "))\n";
-    code += std::string(Indent) + End;
+    code += " = fb.GetArrayFun(";
+    code += NumToString(field.value.offset);
+    code += ",N.";
+    code += MakeCamel(GenTypeGet(field.value.type));
+    code += ",";
+    code += NumToString(InlineSize(vectortype));
+    code += ",'";
+    code += arr_key;
+    code += "',";
     if (IsString(vectortype)) {
-      code += std::string(Indent) + "return ''\n";
+      code += "''";
     } else {
-      code += std::string(Indent) + "return 0\n";
+      code += "0";
     }
-    code += "    else\n"
-    "        return rawget(self, j)\n"
-    "    end\n"
-    "end,\n\n";
-    
-    code += "__ipairs = function(t)\n"
-    "    local idx = 0\n"
-    "    local l = #t\n"
-    "    return function()\n"
-    "        idx = idx + 1\n"
-    "        if idx <= l then\n"
-    "            return idx, t[idx]\n"
-    "        end\n"
-    "    end\n"
-    "end\n"
-    "}\n";
-    
-    code += ")\n"
-    "rawset(self, \"" + arr_key + "\", ret)\n"
-    "return ret\n";
-    code += EndFunc;
+    code += ")\n\n";
+
   }
 
 
@@ -581,9 +480,9 @@ class LuaGenerator : public BaseGenerator {
         default: FLATBUFFERS_ASSERT(0);
       }
     }
-    if (IsVector(field.value.type)) {
-      GetVectorLen(struct_def, field, code_ptr);
-    }
+    // if (IsVector(field.value.type)) {
+      // GetVectorLen(struct_def, field, code_ptr);
+    // }
   }
 
   // Generate table constructors, conditioned on its members' types.
