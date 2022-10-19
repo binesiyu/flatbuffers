@@ -4,32 +4,31 @@
 
 local fb = require('flatbuffers')
 local N = fb.N
+local F=fb.F
 
-local Monster = {} -- the module
+local Monster = F.NewCfg()
 
-Monster.__New = fb.New(Monster)
+Monster.pos = F.FunSub(4,'MyGame.Sample.Vec3',false)
 
-Monster.pos = fb.FunSub(4,'MyGame.Sample.Vec3',false)
+Monster.mana = F.FunField(6,N.Int16,150)
 
-Monster.mana = fb.FunField(6,N.Int16,150)
+Monster.hp = F.FunField(8,N.Int16,100)
 
-Monster.hp = fb.FunField(8,N.Int16,100)
+Monster.name = F.FunFieldString(10)
 
-Monster.name = fb.FunFieldString(10)
+Monster.inventory = F.FunArray(14,N.Uint8,1,'_fb_inventory_arr',0)
 
-Monster.inventory = fb.FunArray(14,N.Uint8,1,'_fb_inventory_arr',0)
+Monster.color = F.FunField(16,N.Int8,2)
 
-Monster.color = fb.FunField(16,N.Int8,2)
+Monster.weapons = F.FunArraySub(18,'MyGame.Sample.Weapon',4,'_fb_weapons_arr',true)
 
-Monster.weapons = fb.FunArraySub(18,'MyGame.Sample.Weapon',4,'_fb_weapons_arr',true)
+Monster.equipped_type = F.FunField(20,N.Uint8,0)
 
-Monster.equipped_type = fb.FunField(20,N.Uint8,0)
+Monster.equipped = F.FunUnion(22)
 
-Monster.equipped = fb.FunUnion(22)
+Monster.path = F.FunArraySub(24,'MyGame.Sample.Vec3',12,'_fb_path_arr',false)
 
-Monster.path = fb.FunArraySub(24,'MyGame.Sample.Vec3',12,'_fb_path_arr',false)
-
-Monster.isnpc = fb.FunFieldBool(26,N.Bool,false)
+Monster.isnpc = F.FunFieldBool(26,N.Bool,false)
 
 
 return Monster -- return the module

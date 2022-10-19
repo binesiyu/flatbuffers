@@ -24,13 +24,23 @@ local function checkReadBuffer(buf, offset, sizePrefix)
 
     -- collectgarbage("collect")
     -- print("释放前lua:", collectgarbage("count"))
-    local mon = monster.__New(flatbuffers.binaryArray.New(buf), offset,true)
+    local mon = monster(flatbuffers.binaryArray.New(buf), offset,true)
     collectgarbage("collect")
     -- print("释放后lua:", collectgarbage("count"))
 
+    -- for k,v in pairs(mon) do
+        -- print("pairs",k,v)
+    -- end
+    -- mon.test = 1
+    assert(mon.hp == 300, "Monster Hp is not 300")
+    assert(mon.hp == 300, "Monster Hp is not 300")
     assert(mon.hp == 300, "Monster Hp is not 300")
     assert(mon.mana == 150, "Monster Mana is not 150")
+    assert(mon.mana == 150, "Monster Mana is not 150")
     assert(mon.name == "Orc", "Monster Name is not MyMonster")
+    assert(mon.name == "Orc", "Monster Name is not MyMonster")
+    assert(mon.name == "Orc", "Monster Name is not MyMonster")
+    assert(mon.pos.x == 10.0)
     assert(mon.pos.x == 10.0)
     assert(mon.pos.y == 2.0)
     assert(mon.pos.z == 3.0)
@@ -41,14 +51,24 @@ local function checkReadBuffer(buf, offset, sizePrefix)
         {w = 'bow', d = 90}
     }
 
+    collectgarbage("collect")
+    print(mon.equipped)
+    print(mon.equipped)
+    collectgarbage("collect")
+    print(mon.equipped)
+    print(mon.equipped)
+
     for i=1,#mon.weapons do
+        -- for k,v in pairs(mon.weapons[i]) do
+            -- print("pairs--weapons",k,v)
+        -- end
        assert(mon.weapons[i].name == expected[i].w)
        assert(mon.weapons[i].damage == expected[i].d)
     end
 
     assert(mon.equipped_type == equipment.Weapon)
 
-    local unionWeapon = weapon.__New(mon.equipped.bytes,mon.equipped.pos)
+    local unionWeapon = weapon(mon.equipped.bytes,mon.equipped.pos)
     assert(unionWeapon.name == "bow")
     assert(unionWeapon.damage == 90)
 end

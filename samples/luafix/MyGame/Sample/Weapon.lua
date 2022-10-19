@@ -4,14 +4,13 @@
 
 local fb = require('flatbuffers')
 local N = fb.N
+local F=fb.F
 
-local Weapon = {} -- the module
+local Weapon = F.NewCfg()
 
-Weapon.__New = fb.New(Weapon)
+Weapon.name = F.FunFieldString(4)
 
-Weapon.name = fb.FunFieldString(4)
-
-Weapon.damage = fb.FunField(6,N.Int16,0)
+Weapon.damage = F.FunField(6,N.Int16,0)
 
 
 return Weapon -- return the module

@@ -68,7 +68,7 @@ class LuaGenerator : public BaseGenerator {
   // Begin a class declaration.
   void BeginClass(const StructDef &struct_def, std::string *code_ptr) {
     std::string &code = *code_ptr;
-    code += "local " + NormalizedName(struct_def) + " = {} -- the module\n";
+    code += "local " + NormalizedName(struct_def) + " = F.NewCfg()\n";
     //code += "local " + NormalizedMetaName(struct_def) +
     //        " = {} -- the class metatable\n";
     code += "\n";
@@ -114,7 +114,7 @@ class LuaGenerator : public BaseGenerator {
                                   std::string *code_ptr) {
     std::string &code = *code_ptr;
 
-    code += NormalizedName(struct_def) + ".__New = fb.New("  + NormalizedName(struct_def) + ")\n\n";
+    code += NormalizedName(struct_def) + ".__New = F.New("  + NormalizedName(struct_def) + ")\n\n";
   }
 
 
@@ -168,10 +168,10 @@ class LuaGenerator : public BaseGenerator {
 
     auto is_bool = field.value.type.base_type == BASE_TYPE_BOOL;
     if (is_bool) {
-        code += " = fb.FunFieldBool(";
+        code += " = F.FunFieldBool(";
     }
     else {
-        code += " = fb.FunField(";
+        code += " = F.FunField(";
     }
 
     code += NumToString(field.value.offset);
@@ -213,7 +213,7 @@ class LuaGenerator : public BaseGenerator {
     std::string &code = *code_ptr;
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += " = fb.FunSub(";
+    code += " = F.FunSub(";
     code += NumToString(field.value.offset);
     code += ",'";
     code += TypeNameWithNamespace(field);
@@ -234,7 +234,7 @@ class LuaGenerator : public BaseGenerator {
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
 
-    code += " = fb.FunFieldString(";
+    code += " = F.FunFieldString(";
     code += NumToString(field.value.offset);
     code += ")\n\n";
   }
@@ -246,7 +246,7 @@ class LuaGenerator : public BaseGenerator {
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
 
-    code += " = fb.FunUnion(";
+    code += " = F.FunUnion(";
     code += NumToString(field.value.offset);
     code += ")\n\n";
   }
@@ -260,7 +260,7 @@ class LuaGenerator : public BaseGenerator {
     std::string arr_key = "_fb_" + MakeCamel2(NormalizedName(field)) + "_arr";
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += " = fb.FunArraySub(";
+    code += " = F.FunArraySub(";
     code += NumToString(field.value.offset);
     code += ",'";
     code += TypeNameWithNamespace(field);
@@ -289,7 +289,7 @@ class LuaGenerator : public BaseGenerator {
     std::string arr_key = "_fb_" + MakeCamel2(NormalizedName(field)) + "_arr";
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += " = fb.FunArray(";
+    code += " = F.FunArray(";
     code += NumToString(field.value.offset);
     code += ",N.";
     code += MakeCamel(GenTypeGet(field.value.type));
@@ -511,7 +511,7 @@ class LuaGenerator : public BaseGenerator {
     GenComment(struct_def.doc_comment, code_ptr, &def_comment);
     BeginClass(struct_def, code_ptr);
 
-    GenerateNewObjectPrototype(struct_def, code_ptr);
+    // GenerateNewObjectPrototype(struct_def, code_ptr);
 
     if (!struct_def.fixed) {
       // Generate a special accessor for the table that has been declared as
@@ -660,7 +660,7 @@ class LuaGenerator : public BaseGenerator {
     code += std::string(Comment) + FlatBuffersGeneratedWarning() + "\n\n";
     code += std::string(Comment) + "namespace: " + name_space_name + "\n\n";
     if (needs_imports) {
-      code += "local fb = require('flatbuffers')\nlocal N = fb.N\n\n";
+      code += "local fb = require('flatbuffers')\nlocal N = fb.N\nlocal F=fb.F\n\n";
     }
   }
 

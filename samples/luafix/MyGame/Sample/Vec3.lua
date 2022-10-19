@@ -4,10 +4,9 @@
 
 local fb = require('flatbuffers')
 local N = fb.N
+local F=fb.F
 
-local Vec3 = {} -- the module
-
-Vec3.__New = fb.New(Vec3)
+local Vec3 = F.NewCfg()
 
 function Vec3:x()
     return self.__view:Get(N.Float32, self.__view.pos + 0)
