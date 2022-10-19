@@ -349,6 +349,7 @@ static int baref_newref(lua_State* L,BinaryArrayRef* ref)
 {
     BinaryArrayRef** udata = (BinaryArrayRef**)lua_newuserdata(L, sizeof(BinaryArrayRef*));
     *udata = ref;
+    BA_SAFE_RETAIN(ref);
     luaL_getmetatable(L, "ba_mt");
     lua_setmetatable(L, -2);
     return 1;
