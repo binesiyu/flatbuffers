@@ -70,7 +70,14 @@ public:
         BA_SAFE_RETAIN(binaryArrayRef);
         binaryArray = binaryArrayRef->ptr;
     }
-
+    
+    View()
+    {
+        binaryArrayRef = nullptr;
+        binaryArray = nullptr;
+        position = 0;
+    }
+    
     ~View()
     {
         BA_SAFE_RELEASE_NULL(binaryArrayRef);
@@ -412,6 +419,14 @@ static int view_new(lua_State* L) {
     return 1;
 }
 
+static int view_new_empty(lua_State* L) {
+    View** udata = (View**)lua_newuserdata(L, sizeof(View*));
+    *udata = new View();
+    luaL_getmetatable(L, "view_mt");
+    lua_setmetatable(L, -2);
+    return 1;
+}
+
 static int view_offset(lua_State* L) {
     View* view = check_view(L, 1);
     uint32_t vtableOffset = (uint32_t)luaL_checkinteger(L, 2);
@@ -594,6 +609,8 @@ LUALIB_API int luaopen_flatbuffersnative(lua_State* L)
 	lua_pushcfunction(L, view_new); // [flatbuffers, new_view]
 	lua_setfield(L, -2, "new_view"); // [flatbuffers]
 
+    lua_pushcfunction(L, view_new_empty); // [flatbuffers, view_new_empty]
+    lua_setfield(L, -2, "new_view_empty"); // [flatbuffers]
 	return 1;
 }
 

@@ -10,6 +10,7 @@ m.binaryArray.New = _G.flatbuffersnative.new_binaryarray
 
 local view = {}
 view.New = _G.flatbuffersnative.new_view
+view.NewEmpty = _G.flatbuffersnative.new_view_empty
 m.view = view
 
 function m.New(mt)

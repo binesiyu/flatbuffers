@@ -2,6 +2,7 @@
 -- package.cpath = string.format("/Users/yubin/.luarocks/lib/lua/5.3/?.so;%s",package.path)
 -- package.cpath = string.format("/Users/yubin/Documents/dev/lua/lua-flatbuffers-master/external/lua-flatbuffers/?.so;%s",package.cpath)
 -- package.path = string.format("/Users/yubin/Documents/dev/lua/lua-flatbuffers-master/external/lua-flatbuffers/?.lua;%s",package.path)
+package.cpath = string.format("../lua_fix/?.so;%s",package.cpath)
 package.path = string.format("../lua_fix/?.lua;%s",package.path)
 package.path = string.format("./luafix/?.lua;%s",package.path)
 
@@ -10,27 +11,23 @@ local flatbuffers = require("flatbuffers")
 local weapon = require("MyGame.Sample.Weapon")
 local monster = require("MyGame.Sample.Monster")
 local color = require("MyGame.Sample.Color")
+local vec3 = require("MyGame.Sample.Vec3")
 local equipment = require("MyGame.Sample.Equipment")
 
 local function checkReadBuffer(buf, offset, sizePrefix)
     offset = offset or 0
 
-    if type(buf) == "string" then
-        print("bufAsString",string.len(buf))
-        local s = string.gsub(buf,"(.)",function (x) return string.format("%d ",string.byte(x)) end)
-        print(s)
-
-        buf = flatbuffers.binaryArray.New(buf)
-    end
+    print("bufAsString",string.len(buf))
+    local s = string.gsub(buf,"(.)",function (x) return string.format("%d ",string.byte(x)) end)
+    print(s)
 
 
-    if sizePrefix then
-        local size = flatbuffers.N.Int32:Unpack(buf, offset)
-        assert(size == buf.size - offset - 4)
-        offset = offset + flatbuffers.N.Int32.bytewidth
-    end
+    collectgarbage("collect")
+    print("释放前lua:", collectgarbage("count"))
+    local mon = monster.__New(flatbuffers.binaryArray.New(buf), offset,true)
+    collectgarbage("collect")
+    print("释放后lua:", collectgarbage("count"))
 
-    local mon = monster.__New(buf, offset,true)
     assert(mon.hp == 300, "Monster Hp is not 300")
     assert(mon.mana == 150, "Monster Mana is not 150")
     assert(mon.name == "Orc", "Monster Name is not MyMonster")
@@ -63,6 +60,10 @@ local function testCanonicalData()
     checkReadBuffer(wireData)
 end
 
+collectgarbage("collect")
+print("释放前lua:", collectgarbage("count"))
 testCanonicalData()
+collectgarbage("collect")
+print("释放后lua:", collectgarbage("count"))
 
 print("The Lua FlatBuffer example was successfully created and verified!")

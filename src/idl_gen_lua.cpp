@@ -260,7 +260,7 @@ class LuaGenerator : public BaseGenerator {
     code +=
         std::string(Indent) + Indent +
         "local obj = "
-        "fb.view.New(fb.binaryArray.New(0), 0)\n";
+        "fb.view.NewEmpty()\n";
     code += std::string(Indent) + Indent + GenGetter(field.value.type) +
             "obj, o)\n";
     code += std::string(Indent) + Indent + "return obj\n";

@@ -126,7 +126,7 @@ Monster.equipped_type = fb.GetFieldFun(20,N.Uint8,0)
 function Monster:equipped()
     local o = self.__view:Offset(22)
     if o ~= 0 then
-        local obj = fb.view.New(fb.binaryArray.New(0), 0)
+        local obj = fb.view.NewEmpty()
         self.__view:Union(obj, o)
         return obj
     end
