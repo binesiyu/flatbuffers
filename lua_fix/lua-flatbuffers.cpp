@@ -32,10 +32,50 @@ public:
     std::vector<char> data;
 };
 
+struct BinaryArrayRef {
+    BinaryArray* ptr;
+    int count;
+    
+    BinaryArrayRef(BinaryArray* _ptr)
+    {
+        ptr = _ptr;
+        count = 1;
+    }
+    
+    void retain()
+    {
+        count++;
+    }
+    
+    void release()
+    {
+        count--;
+        if(count <= 0 && ptr != nullptr)
+        {
+            delete ptr;
+            ptr = nullptr;
+        }
+    }
+};
+
+#define BA_SAFE_RELEASE(p)          do { if(p) { (p)->release(); } } while(0)
+#define BA_SAFE_RELEASE_NULL(p)     do { if(p) { (p)->release(); (p) = nullptr; } } while(0)
+#define BA_SAFE_RETAIN(p)           do { if(p) { (p)->retain(); } } while(0)
+
 class View {
 public:
-    View(BinaryArray* binaryArray, uint32_t position) : binaryArray(binaryArray), position(position) {}
+    View(BinaryArrayRef* _binaryArrayRef, uint32_t position)
+    : position(position) {
+        binaryArrayRef = _binaryArrayRef;
+        BA_SAFE_RETAIN(binaryArrayRef);
+        binaryArray = binaryArrayRef->ptr;
+    }
 
+    ~View()
+    {
+        BA_SAFE_RELEASE_NULL(binaryArrayRef);
+    }
+    
     uint32_t Offset(uint32_t vtableOffset) {
         uint32_t vtable = position - Get<int32_t>(position);
         uint32_t vtableEnd = Get<uint16_t>(vtable);
@@ -66,10 +106,27 @@ public:
     
     void Union(View* v2, uint32_t offset) {
         offset += position;
-        v2->position = offset + Get<uint32_t>(offset);
-        v2->binaryArray = binaryArray;
+        v2->updateBinaryArray(binaryArrayRef,offset + Get<uint32_t>(offset));
     }
 
+    void updateBinaryArray(BinaryArrayRef* _binaryArrayRef, uint32_t position)
+    {
+        BA_SAFE_RELEASE_NULL(binaryArrayRef);
+        
+        binaryArrayRef = _binaryArrayRef;
+        if(binaryArrayRef != nullptr)
+        {
+            binaryArrayRef->retain();
+            binaryArray = binaryArrayRef->ptr;
+            this->position = position;
+        }
+        else
+        {
+            binaryArray = nullptr;
+            this->position = 0;
+        }
+    }
+    
     template<typename T>
     T Get(uint32_t offset) {
         return *((T*)binaryArray->Data(offset));
@@ -78,7 +135,8 @@ public:
     uint32_t UnpackUInt32(uint32_t offset) {
         return *((uint32_t*)binaryArray->Data(offset));
     }
-
+    
+    BinaryArrayRef* binaryArrayRef;
     BinaryArray* binaryArray;
     uint32_t position;
 };
@@ -112,13 +170,14 @@ public:
     const char* packFmt;
 };
 
-struct BinaryArrayRef {
-    BinaryArray* ptr;
-    bool is_owner;
-};
+
 
 BinaryArray* check_binaryarray(lua_State* L, int n) {
-    return ((BinaryArrayRef*)luaL_checkudata(L, n, "ba_mt"))->ptr;
+    return (*((BinaryArrayRef**)luaL_checkudata(L, n, "ba_mt")))->ptr;
+}
+
+BinaryArrayRef* check_binaryarrayref(lua_State* L, int n) {
+    return *((BinaryArrayRef**)luaL_checkudata(L, n, "ba_mt"));
 }
 
 View* check_view(lua_State* L, int n) {
@@ -270,25 +329,37 @@ static void new_num_types_table(lua_State* L) {
     lua_setfield(L, -2, "SOffsetT");
 }
 
+static int baref_new(lua_State* L,BinaryArray* ptr)
+{
+    BinaryArrayRef** udata = (BinaryArrayRef**)lua_newuserdata(L, sizeof(BinaryArrayRef*));
+    *udata = new BinaryArrayRef(ptr);
+    luaL_getmetatable(L, "ba_mt");
+    lua_setmetatable(L, -2);
+    return 1;
+}
+
+static int baref_newref(lua_State* L,BinaryArrayRef* ref)
+{
+    BinaryArrayRef** udata = (BinaryArrayRef**)lua_newuserdata(L, sizeof(BinaryArrayRef*));
+    *udata = ref;
+    luaL_getmetatable(L, "ba_mt");
+    lua_setmetatable(L, -2);
+    return 1;
+}
+
 static int ba_new(lua_State* L) {
     if (lua_isstring(L, 1)) {
         SizedString str;
         str.string = lua_tolstring(L, 1, &str.size);
-        BinaryArrayRef* ba_ref = (BinaryArrayRef*)lua_newuserdata(L, sizeof(BinaryArrayRef));
-        ba_ref->ptr = new BinaryArray(str);
-        ba_ref->is_owner = true;
-        luaL_getmetatable(L, "ba_mt");
-        lua_setmetatable(L, -2);
-        return 1;
+        
+        BinaryArray* ptr = new BinaryArray(str);
+        return baref_new(L, ptr);
     }
     else if (lua_isnumber(L, 1)) {
         uint32_t size = (uint32_t)lua_tointeger(L, 1);
-        BinaryArrayRef* ba_ref = (BinaryArrayRef*)lua_newuserdata(L, sizeof(BinaryArrayRef));
-        ba_ref->ptr = new BinaryArray(size);
-        ba_ref->is_owner = true;
-        luaL_getmetatable(L, "ba_mt");
-        lua_setmetatable(L, -2);
-        return 1;
+
+        BinaryArray* ptr = new BinaryArray(size);
+        return baref_new(L, ptr);
     }
     lua_pushliteral(L, "incorrect argument");
     lua_error(L);
@@ -313,8 +384,8 @@ static int ba_size(lua_State* L) {
 }
 
 static int ba_gc(lua_State* L) {
-    BinaryArrayRef* ba_ref = ((BinaryArrayRef*)luaL_checkudata(L, 1, "ba_mt"));
-    if (ba_ref->is_owner) delete ba_ref->ptr;
+    BinaryArrayRef* ba_ref = check_binaryarrayref(L, 1);
+    BA_SAFE_RELEASE_NULL(ba_ref);
     return 0;
 }
 
@@ -332,10 +403,10 @@ static void register_binaryarray(lua_State* L) {
 }
 
 static int view_new(lua_State* L) {
-    BinaryArray* ba = check_binaryarray(L, 1);
+    BinaryArrayRef* baref = check_binaryarrayref(L, 1);
     uint32_t position = (uint32_t)luaL_checkinteger(L, 2);
     View** udata = (View**)lua_newuserdata(L, sizeof(View*));
-    *udata = new View(ba, position);
+    *udata = new View(baref, position);
     luaL_getmetatable(L, "view_mt");
     lua_setmetatable(L, -2);
     return 1;
@@ -450,12 +521,7 @@ static int view_index(lua_State* L) {
         lua_pushinteger(L, view->position);
         return 1;
     } else if (strcmp(key, "bytes") == 0) {
-        BinaryArrayRef* ba = (BinaryArrayRef*)lua_newuserdata(L, sizeof(BinaryArrayRef));
-        ba->ptr = view->binaryArray;
-        ba->is_owner = false;
-        luaL_getmetatable(L, "ba_mt");
-        lua_setmetatable(L, -2);
-        return 1;
+        return baref_newref(L,view->binaryArrayRef);
     } else {
         luaL_getmetatable(L, "view_mt_mt");
         lua_getfield(L, -1, key);

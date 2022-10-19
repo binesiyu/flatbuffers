@@ -2,43 +2,16 @@
 
 -- namespace: Sample
 
-local flatbuffers = require('flatbuffers')
+local fb = require('flatbuffers')
+local N = fb.N
 
 local Weapon = {} -- the module
 
-function Weapon.New()
-    local o = {}
-    setmetatable(o, {__index = function(t, key)
-        local f = rawget(Weapon, key)
-    return f(t)
-    end,
-    __call = function(self,buf,pos)
-        self.view = flatbuffers.view.New(buf, pos)
-    end
-    })    
-return o
-end
-function Weapon.GetRootAsWeapon(buf, offset)
-    if type(buf) == "string" then
-        buf = flatbuffers.binaryArray.New(buf)
-    end
-    local n = flatbuffers.N.UOffsetT:Unpack(buf, offset)
-    local o = Weapon.New()
-    o(buf, n + offset)
-    return o
-end
-function Weapon:name()
-    local o = self.view:Offset(4)
-    if o ~= 0 then
-        return self.view:String(o + self.view.pos)
-    end
-end
-function Weapon:damage()
-    local o = self.view:Offset(6)
-    if o ~= 0 then
-        return self.view:Get(flatbuffers.N.Int16, o + self.view.pos)
-    end
-    return 0
-end
+Weapon.__New = fb.New(Weapon)
+
+Weapon.name = fb.GetStringFun(4)
+
+Weapon.damage = fb.GetFieldFun(6,N.Int16,0)
+
 
 return Weapon -- return the module

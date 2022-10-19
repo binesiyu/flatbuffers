@@ -65,12 +65,12 @@ function m.GetStringFun(size)
     end
 end
 
-function m.GetSubFun(size,path,isroot)
+function m.GetSubFun(size,path,isTable)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
             local x
-            if isroot then
+            if isTable then
                 x = self.__view:Indirect(self.__view.pos)
             else
                 x = o + self.__view.pos

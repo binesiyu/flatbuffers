@@ -2,60 +2,21 @@
 
 -- namespace: Sample
 
-local flatbuffers = require('flatbuffers')
+local fb = require('flatbuffers')
+local N = fb.N
 
 local Monster = {} -- the module
 
-function Monster.New()
-    local o = {}
-    setmetatable(o, {__index = function(t, key)
-        local f = rawget(Monster, key)
-    return f(t)
-    end,
-    __call = function(self,buf,pos)
-        self.view = flatbuffers.view.New(buf, pos)
-    end
-    })    
-return o
-end
-function Monster.GetRootAsMonster(buf, offset)
-    if type(buf) == "string" then
-        buf = flatbuffers.binaryArray.New(buf)
-    end
-    local n = flatbuffers.N.UOffsetT:Unpack(buf, offset)
-    local o = Monster.New()
-    o(buf, n + offset)
-    return o
-end
-function Monster:pos()
-    local o = self.view:Offset(4)
-    if o ~= 0 then
-        local x = o + self.view.pos
-        local obj = require('MyGame.Sample.Vec3').New()
-        obj(self.view.bytes, x)
-        return obj
-    end
-end
-function Monster:mana()
-    local o = self.view:Offset(6)
-    if o ~= 0 then
-        return self.view:Get(flatbuffers.N.Int16, o + self.view.pos)
-    end
-    return 150
-end
-function Monster:hp()
-    local o = self.view:Offset(8)
-    if o ~= 0 then
-        return self.view:Get(flatbuffers.N.Int16, o + self.view.pos)
-    end
-    return 100
-end
-function Monster:name()
-    local o = self.view:Offset(10)
-    if o ~= 0 then
-        return self.view:String(o + self.view.pos)
-    end
-end
+Monster.__New = fb.New(Monster)
+
+Monster.pos = fb.GetSubFun(4,'MyGame.Sample.Vec3',false)
+
+Monster.mana = fb.GetFieldFun(6,N.Int16,150)
+
+Monster.hp = fb.GetFieldFun(8,N.Int16,100)
+
+Monster.name = fb.GetStringFun(10)
+
 function Monster:inventory()
 local ret = rawget(self, "_fb_inventory_arr")
 if ret then
@@ -73,10 +34,10 @@ end,
 
 __index = function(t, j)
     if type(j) == 'number' then
-    local o = self.view:Offset(14)
+    local o = self.__view:Offset(14)
     if o ~= 0 then
-        local a = self.view:Vector(o)
-        return self.view:Get(flatbuffers.N.Uint8, a + ((j-1) * 1))
+        local a = self.__view:Vector(o)
+        return self.__view:Get(N.Uint8, a + ((j-1) * 1))
     end
     return 0
     else
@@ -99,23 +60,15 @@ end
 rawset(self, "_fb_inventory_arr", ret)
 return ret
 end
-function Monster:InventoryAsString(start, stop)
-    return self.view:VectorAsString(14, start, stop)
-end
 function Monster:inventoryLength()
-    local o = self.view:Offset(14)
+    local o = self.__view:Offset(14)
     if o ~= 0 then
-        return self.view:VectorLen(o)
+        return self.__view:VectorLen(o)
     end
     return 0
 end
-function Monster:color()
-    local o = self.view:Offset(16)
-    if o ~= 0 then
-        return self.view:Get(flatbuffers.N.Int8, o + self.view.pos)
-    end
-    return 2
-end
+Monster.color = fb.GetFieldFun(16,N.Int8,2)
+
 function Monster:weapons()
 local ret = rawget(self, "_fb_weapons_arr")
 if ret then
@@ -133,13 +86,12 @@ end,
 
 __index = function(t, j)
     if type(j) == 'number' then
-    local o = self.view:Offset(18)
+    local o = self.__view:Offset(18)
     if o ~= 0 then
-        local x = self.view:Vector(o)
+        local x = self.__view:Vector(o)
         x = x + ((j-1) * 4)
-        x = self.view:Indirect(x)
-        local obj = require('MyGame.Sample.Weapon').New()
-        obj(self.view.bytes, x)
+        x = self.__view:Indirect(x)
+        local obj = require('MyGame.Sample.Weapon').__New(self.__view.bytes, x)
         return obj
     end
     else
@@ -163,24 +115,19 @@ rawset(self, "_fb_weapons_arr", ret)
 return ret
 end
 function Monster:weaponsLength()
-    local o = self.view:Offset(18)
+    local o = self.__view:Offset(18)
     if o ~= 0 then
-        return self.view:VectorLen(o)
+        return self.__view:VectorLen(o)
     end
     return 0
 end
-function Monster:equipped_type()
-    local o = self.view:Offset(20)
-    if o ~= 0 then
-        return self.view:Get(flatbuffers.N.Uint8, o + self.view.pos)
-    end
-    return 0
-end
+Monster.equipped_type = fb.GetFieldFun(20,N.Uint8,0)
+
 function Monster:equipped()
-    local o = self.view:Offset(22)
+    local o = self.__view:Offset(22)
     if o ~= 0 then
-        local obj = flatbuffers.view.New(flatbuffers.binaryarray.New(0), 0)
-        self.view:Union(obj, o)
+        local obj = fb.view.New(fb.binaryArray.New(0), 0)
+        self.__view:Union(obj, o)
         return obj
     end
 end
@@ -201,12 +148,11 @@ end,
 
 __index = function(t, j)
     if type(j) == 'number' then
-    local o = self.view:Offset(24)
+    local o = self.__view:Offset(24)
     if o ~= 0 then
-        local x = self.view:Vector(o)
+        local x = self.__view:Vector(o)
         x = x + ((j-1) * 12)
-        local obj = require('MyGame.Sample.Vec3').New()
-        obj(self.view.bytes, x)
+        local obj = require('MyGame.Sample.Vec3').__New(self.__view.bytes, x)
         return obj
     end
     else
@@ -230,11 +176,13 @@ rawset(self, "_fb_path_arr", ret)
 return ret
 end
 function Monster:pathLength()
-    local o = self.view:Offset(24)
+    local o = self.__view:Offset(24)
     if o ~= 0 then
-        return self.view:VectorLen(o)
+        return self.__view:VectorLen(o)
     end
     return 0
 end
+Monster.isnpc = fb.GetFieldFunBool(26,N.Bool,false)
+
 
 return Monster -- return the module

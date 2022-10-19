@@ -2,30 +2,21 @@
 
 -- namespace: Sample
 
-local flatbuffers = require('flatbuffers')
+local fb = require('flatbuffers')
+local N = fb.N
 
 local Vec3 = {} -- the module
 
-function Vec3.New()
-    local o = {}
-    setmetatable(o, {__index = function(t, key)
-        local f = rawget(Vec3, key)
-    return f(t)
-    end,
-    __call = function(self,buf,pos)
-        self.view = flatbuffers.view.New(buf, pos)
-    end
-    })    
-return o
-end
+Vec3.__New = fb.New(Vec3)
+
 function Vec3:x()
-    return self.view:Get(flatbuffers.N.Float32, self.view.pos + 0)
+    return self.__view:Get(N.Float32, self.__view.pos + 0)
 end
 function Vec3:y()
-    return self.view:Get(flatbuffers.N.Float32, self.view.pos + 4)
+    return self.__view:Get(N.Float32, self.__view.pos + 4)
 end
 function Vec3:z()
-    return self.view:Get(flatbuffers.N.Float32, self.view.pos + 8)
+    return self.__view:Get(N.Float32, self.__view.pos + 8)
 end
 
 return Vec3 -- return the module
