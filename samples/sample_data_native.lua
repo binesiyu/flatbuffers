@@ -26,9 +26,9 @@ local function checkReadBuffer(buf, offset, sizePrefix)
         collectgarbage("collect")
         -- print("释放后lua:", collectgarbage("count"))
 
-        -- for k,v in pairs(mon) do
-            -- print("pairs",k,v)
-        -- end
+        for k,v in pairs(mon) do
+            print("pairs",k,v)
+        end
         -- mon.test = 1
         assert(mon.hp == 300, "Monster Hp is not 300")
         assert(mon.hp == 300, "Monster Hp is not 300")

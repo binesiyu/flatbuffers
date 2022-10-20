@@ -8,14 +8,11 @@ local F=fb.F
 
 local Vec3 = F.NewCfg()
 
-function Vec3:x()
-    return self.__view:Get(N.Float32, self.__view.pos + 0)
-end
-function Vec3:y()
-    return self.__view:Get(N.Float32, self.__view.pos + 4)
-end
-function Vec3:z()
-    return self.__view:Get(N.Float32, self.__view.pos + 8)
-end
+Vec3.x = F.FunFieldStruct(0,N.Float32)
+
+Vec3.y = F.FunFieldStruct(4,N.Float32)
+
+Vec3.z = F.FunFieldStruct(8,N.Float32)
+
 
 return Vec3 -- return the module

@@ -174,6 +174,12 @@ function F.FunField(size,ntype,default)
     end
 end
 
+function F.FunFieldStruce(size,ntype)
+    return function(self)
+        return self.__view:Get(ntype, self.__view.pos + size)
+    end
+end
+
 function F.FunFieldBool(size,ntype,default)
     return function(self)
         local o = self.__view:Offset(size)

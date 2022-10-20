@@ -169,13 +169,13 @@ class LuaGenerator : public BaseGenerator {
                               const FieldDef &field, std::string *code_ptr) {
     std::string &code = *code_ptr;
     std::string getter = GenGetter(field.value.type);
-    GenReceiver(struct_def, code_ptr);
+    GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += "()\n";
-    code += std::string(Indent) + "return " + getter;
-    code += std::string(SelfDataPos) + " + " + NumToString(field.value.offset) +
-            ")\n";
-    code += EndFunc;
+    code += " = F.FunFieldStruct(";
+    code += NumToString(field.value.offset);
+    code += ",N.";
+    code += MakeCamel(GenTypeGet(field.value.type));
+    code += ")\n\n";
   }
 
   // Get the value of a table's scalar.
@@ -742,12 +742,12 @@ class LuaGenerator : public BaseGenerator {
     if(hasRoot)
     {
         code +=
-            "return F.createCfg('" + NormalizedName(def) + "'," + NormalizedName(def) + ") " + Comment + "return the Cfg";
+            "return F.createCfg('" + NormalizedName(def) + "'," + NormalizedName(def) + ") " + Comment + "return the Cfg\n";
     }
     else
     {
     code +=
-        "return " + NormalizedName(def) + " " + Comment + "return the module";
+        "return " + NormalizedName(def) + " " + Comment + "return the module\n";
     }
     std::string filename =
         NamespaceDir(*def.defined_namespace) + NormalizedName(def) + ".lua";
