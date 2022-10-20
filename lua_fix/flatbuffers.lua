@@ -5,8 +5,9 @@ _G.flatbuffersnative = require("flatbuffersnative")
 local N = _G.flatbuffersnative.N
 m.N = N
 
-m.binaryArray = {}
-m.binaryArray.New = _G.flatbuffersnative.new_binaryarray
+local binaryArray = {}
+binaryArray.New = _G.flatbuffersnative.new_binaryarray
+m.binaryArray = binaryArray
 
 local view = {}
 view.New = _G.flatbuffersnative.new_view
@@ -174,7 +175,7 @@ function F.FunField(size,ntype,default)
     end
 end
 
-function F.FunFieldStruce(size,ntype)
+function F.FunFieldStruct(size,ntype)
     return function(self)
         return self.__view:Get(ntype, self.__view.pos + size)
     end
@@ -331,13 +332,10 @@ local function getFileData(name)
     return fileData
 end
 
-function F.createCfg(name,mt)
-    local MonsterRoot = F.NewCfg()
-    MonsterRoot.items = F.FunArrayCfg(4,mt,4,'_fb_items_arr',true)
-
+function F.createCfg(name,root)
     local fileData = getFileData(name)
     if fileData then
-        local data = MonsterRoot(m.binaryArray.New(fileData), 0,true)
+        local data = root(binaryArray.New(fileData), 0,true)
         return data and data.items or {}
     end
     return {}

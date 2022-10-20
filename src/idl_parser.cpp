@@ -2672,6 +2672,18 @@ bool Parser::SetRootType(const char *name) {
   return root_struct_def_ != nullptr;
 }
 
+bool Parser::UpdateRootType(const char *name) {
+  auto struct_def_ = LookupStruct(name);
+  if (!struct_def_)
+      struct_def_ =
+        LookupStruct(current_namespace_->GetFullyQualifiedName(name));
+  if(struct_def_)
+  {
+      struct_def_->isroot = true;
+  }
+  return struct_def_ != nullptr;
+}
+
 void Parser::MarkGenerated() {
   // This function marks all existing definitions as having already
   // been generated, which signals no code for included files should be
@@ -3400,6 +3412,7 @@ CheckedError Parser::DoParse(const char *source, const char **include_paths,
           return Error("unknown root type: " + root_type);
         if (root_struct_def_->fixed) return Error("root type must be a table");
       }
+      UpdateRootType(root_type.c_str());
       EXPECT(';');
     } else if (IsIdent("file_identifier")) {
       NEXT();

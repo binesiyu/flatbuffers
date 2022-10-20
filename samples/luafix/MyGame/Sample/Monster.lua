@@ -30,5 +30,10 @@ Monster.path = F.FunArraySub(24,'MyGame.Sample.Vec3',12,'_fb_path_arr',false)
 
 Monster.isnpc = F.FunFieldBool(26,N.Bool,false)
 
+-- root cfg
+local MonsterRoot = F.NewCfg()
 
-return F.createCfg('Monster',Monster) -- return the Cfg
+MonsterRoot.items = F.FunArrayCfg(4,Monster,4,'_fb_items_arr',true)
+
+
+return F.createCfg('Monster',MonsterRoot) -- return the Cfg

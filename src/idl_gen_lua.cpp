@@ -279,11 +279,29 @@ class LuaGenerator : public BaseGenerator {
     std::string arr_key = "_fb_" + MakeCamel2(NormalizedName(field)) + "_arr";
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += " = F.FunArraySub(";
+    if(struct_def.isroot)
+    {
+        code += " = F.FunArrayCfg(";
+    }
+    else
+    {
+        code += " = F.FunArraySub(";
+    }
+    
     code += NumToString(field.value.offset);
-    code += ",'";
-    code += TypeNameWithNamespace(field);
-    code += "',";
+   
+    if(struct_def.isroot)
+    {
+        code += ",";
+        code += getStructsNameRoot(struct_def.name);
+        code += ",";
+    }
+    else
+    {
+        code += ",'";
+        code += TypeNameWithNamespace(field);
+        code += "',";
+    }
     code += NumToString(InlineSize(vectortype));
     code += ",'";
     code += arr_key;
@@ -559,6 +577,24 @@ class LuaGenerator : public BaseGenerator {
        */
   }
 
+    // Generate struct or table methods.
+    void GenRoot(const StructDef &struct_def, std::string *code_ptr) {
+      if (struct_def.generated) return;
+      std::string &code = *code_ptr;
+      code += std::string(Comment) + "root cfg\n";
+      BeginClass(struct_def, code_ptr);
+      // Generate the Init method that sets the field in a pre-existing
+      // accessor object. This is to allow object reuse.
+      //InitializeExisting(struct_def, code_ptr);
+      for (auto it = struct_def.fields.vec.begin();
+           it != struct_def.fields.vec.end(); ++it) {
+        auto &field = **it;
+        if (field.deprecated) continue;
+
+        GenStructAccessor(struct_def, field, code_ptr);
+      }
+    }
+    
   // Generate enum declarations.
   void GenEnum(const EnumDef &enum_def, std::string *code_ptr) {
     if (enum_def.generated) return;
@@ -696,13 +732,14 @@ class LuaGenerator : public BaseGenerator {
         if(itroot != mapTypeDef.end())
         {
             GenStruct(struct_def, &declcode);
-            
-            if (!SaveType(struct_def, declcode, true,true)) return false;
+            auto struct_def_root = itroot->second;
+            GenRoot(*struct_def_root, &declcode);
+            if (!SaveType(struct_def, declcode, true,struct_def_root)) return false;
         }
         else
         {
             GenStruct(struct_def, &declcode);
-            if (!SaveType(struct_def, declcode, true,false)) return false;
+            if (!SaveType(struct_def, declcode, true)) return false;
         }
       
     }
@@ -722,7 +759,7 @@ class LuaGenerator : public BaseGenerator {
 
   // Save out the generated code for a Lua Table type.
   bool SaveType(const Definition &def, const std::string &classcode,
-                bool needs_imports,bool hasRoot = false) {
+                bool needs_imports,const Definition *root = nullptr) {
     if (!classcode.length()) return true;
 
     std::string namespace_dir = path_;
@@ -739,10 +776,10 @@ class LuaGenerator : public BaseGenerator {
     code += classcode;
     code += "\n";
       
-    if(hasRoot)
+    if(root)
     {
         code +=
-            "return F.createCfg('" + NormalizedName(def) + "'," + NormalizedName(def) + ") " + Comment + "return the Cfg\n";
+            "return F.createCfg('" + NormalizedName(def) + "'," + NormalizedName(*root) + ") " + Comment + "return the Cfg\n";
     }
     else
     {

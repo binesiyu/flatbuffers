@@ -352,6 +352,7 @@ struct StructDef : public Definition {
         predecl(true),
         sortbysize(true),
         has_key(false),
+        isroot(false),
         minalign(1),
         bytesize(0) {}
 
@@ -372,6 +373,7 @@ struct StructDef : public Definition {
   bool predecl;     // If it's used before it was defined.
   bool sortbysize;  // Whether fields come in the declaration or size order.
   bool has_key;     // It has a key field.
+  bool isroot;    // It was root type
   size_t minalign;  // What the whole object needs to be aligned to.
   size_t bytesize;  // Size if fixed.
 
@@ -843,6 +845,8 @@ class Parser : public ParserState {
 
   // Set the root type. May override the one set in the schema.
   bool SetRootType(const char *name);
+    // Set the root type. May override the one set in the schema.
+  bool UpdateRootType(const char *name);
 
   // Mark all definitions as already having code generated.
   void MarkGenerated();
