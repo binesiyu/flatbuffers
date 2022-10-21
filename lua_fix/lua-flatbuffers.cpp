@@ -160,8 +160,8 @@ public:
 };
 template<typename T> struct CompareToHelper {
   static int CompareTo(const T a, const T b) {
-      if (b > a) return 1;
-      else if(b < a) return -1;
+      if (b > a) return -1;
+      else if(b < a) return 1;
       return 0;
   }
 };

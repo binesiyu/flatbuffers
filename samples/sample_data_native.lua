@@ -22,6 +22,11 @@ local function checkReadBuffer(buf, offset, sizePrefix)
     -- collectgarbage("collect")
     -- print("释放前lua:", collectgarbage("count"))
     local monroot = require("MyGame.Sample.Monster")
+    print("id",monroot[3].id)
+    for id,mon in pairs(monroot) do
+        print(id,"id")
+    end
+
     for i,mon in ipairs(monroot) do
         print(i,"i")
         collectgarbage("collect")
@@ -65,6 +70,10 @@ local function checkReadBuffer(buf, offset, sizePrefix)
                assert(mon.weapons[i].name == expected[i].w)
                assert(mon.weapons[i].damage == expected[i].d)
            end
+        end
+
+        for name,w in pairs(mon.weapons) do
+            print("pairs",name,w.damage)
         end
 
         if i == 1 then

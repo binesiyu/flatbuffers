@@ -326,7 +326,9 @@ class LuaGenerator : public BaseGenerator {
 
         if(key_field)
         {
-          code += ",";
+          code += ",'";
+          code += MakeCamel2(NormalizedName(*key_field));
+          code += "',";
           code += NumToString(key_field->value.offset);
           code += ",";
           if (!IsString(key_field->value.type)) {

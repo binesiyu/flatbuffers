@@ -20,7 +20,7 @@ Monster.inventory = F.FunArray(14,N.Uint8,1,'_fb_inventory_arr',0)
 
 Monster.color = F.FunField(16,N.Int8,2)
 
-Monster.weapons = F.FunArraySub(18,'MyGame.Sample.Weapon',4,'_fb_weapons_arr',true,4,false)
+Monster.weapons = F.FunArraySub(18,'MyGame.Sample.Weapon',4,'_fb_weapons_arr',true,'name',4,false)
 
 Monster.equipped_type = F.FunField(20,N.Uint8,0)
 
@@ -30,10 +30,12 @@ Monster.path = F.FunArraySub(24,'MyGame.Sample.Vec3',12,'_fb_path_arr',false)
 
 Monster.isnpc = F.FunFieldBool(26,N.Bool,false)
 
+Monster.id = F.FunField(28,N.Int32,0)
+
 -- root cfg
 local MonsterRoot = F.NewCfg()
 
-MonsterRoot.items = F.FunArrayCfg(4,Monster,4,'_fb_items_arr',true)
+MonsterRoot.items = F.FunArrayCfg(4,Monster,4,'_fb_items_arr',true,'id',28,true,N.Int32)
 
 
 return F.createCfg('Monster',MonsterRoot) -- return the Cfg

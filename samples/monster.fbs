@@ -24,6 +24,7 @@ table Monster {
   equipped:Equipment;
   path:[Vec3];
   isnpc:bool;
+  id:int(key);
 }
 
 table Weapon {

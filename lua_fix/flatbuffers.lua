@@ -244,6 +244,65 @@ local function commonipairs(t)
     return stateless_iter, t, 0
 end
 
+local function arrayipairs(t)
+    -- Iterator function
+    local l = #t
+    local function stateless_iter(tbl, i)
+        -- Implement your own index, value selection logic
+        i = i + 1
+        if i <= l then
+            return i, tbl(i)
+        end
+    end
+
+    -- return iterator function, table, and starting point
+    return stateless_iter, t, 0
+end
+
+--以int等类型为key的pairs
+local function arraypairs(keyname)
+    -- Iterator function
+    return function(t)
+        local l = #t
+        local i = 0
+        local function stateless_iter(tbl, _)
+            -- Implement your own index, value selection logic
+            i = i + 1
+            if i <= l then
+                local value = tbl(i)
+                if value then
+                    return value[keyname], value
+                end
+            end
+        end
+
+        -- return iterator function, table, and starting point
+        return stateless_iter, t, 0
+    end
+end
+
+--以string为key的pairs
+local function arraypairsstring(keyname)
+    -- Iterator function
+    return function(t)
+        local l = #t
+        local i = 0
+        local function stateless_iter(tbl, _)
+            -- Implement your own index, value selection logic
+            i = i + 1
+            if i <= l then
+                local value = tbl[i]
+                if value then
+                    return value[keyname], value
+                end
+            end
+        end
+
+        -- return iterator function, table, and starting point
+        return stateless_iter, t, 0
+    end
+end
+
 local function createFunArrayLen(self,size)
     return function()
             local o = self.__view:Offset(size)
@@ -261,6 +320,7 @@ local function createArrayMetaDefault(self,size)
         -- end
         -- __newindex = tablereadonly,
         -- __newindex = rawset,
+        -- __mode = "kv",
         __len = createFunArrayLen(self,size),
         __ipairs = commonipairs,
         __pairs = commonipairs
@@ -295,7 +355,7 @@ function F.FunArray(size,ntype,ntypesize,cachekey,default)
     end
 end
 
-function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,key,iskeynum,keytype)
+function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,keytype)
     return function(self)
         local ret = rawget(self, cachekey)
         if ret then
@@ -312,7 +372,7 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,key,iskeynum,keytype)
                             local x = self.__view:Vector(o)
 
                             -- x = x + ((j-1) * ntypesize)
-                            x = self.__view:LookUpNum(x,ntypesize,key,isTable,j,keytype)
+                            x = self.__view:LookUpNum(x,ntypesize,key,isTable,keytype,j)
                             if x >= 0 then
                                 local obj = cfg(self.__view.bytes, x)
                                 return obj
@@ -322,6 +382,25 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,key,iskeynum,keytype)
                         return rawget(self, j)
                     end
                 end
+                --用call指代原来的__index
+                mt.__call = function(_, j)
+                    if type(j) == 'number' then
+                        local o = self.__view:Offset(size)
+                        if o ~= 0 then
+                            local x = self.__view:Vector(o)
+                            x = x + ((j-1) * ntypesize)
+                            if isTable then
+                                x = self.__view:Indirect(x)
+                            end
+                            local obj = cfg(self.__view.bytes, x)
+                            return obj
+                        end
+                    else
+                        return rawget(self, j)
+                    end
+                end
+                mt.__ipairs = arrayipairs
+                mt.__pairs = arraypairs(keyname)
             else
                 mt.__index = function(_, j)
                     if type(j) == 'number' then
@@ -346,10 +425,12 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,key,iskeynum,keytype)
                                 local obj = cfg(self.__view.bytes, x)
                                 return obj
                             end
+                            return rawget(self, j)
                         end
-                        -- return rawget(self, j)
+                        return rawget(self, j)
                     end
                 end
+                mt.__pairs = arraypairsstring(keyname)
             end
         else
             mt.__index = function(_, j)
@@ -375,9 +456,9 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,key,iskeynum,keytype)
     end
 end
 
-function F.FunArraySub(size,path,ntypesize,cachekey,isTable,key,iskeynum,keytype)
+function F.FunArraySub(size,path,ntypesize,cachekey,isTable,keyname,key,iskeynum,keytype)
     local cfg = require(path)
-    return F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,key,iskeynum,keytype)
+    return F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,keytype)
 end
 
 local function getFileData(name)
