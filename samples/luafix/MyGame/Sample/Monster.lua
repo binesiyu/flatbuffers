@@ -20,7 +20,7 @@ Monster.inventory = F.FunArray(14,N.Uint8,1,'_fb_inventory_arr',0)
 
 Monster.color = F.FunField(16,N.Int8,2)
 
-Monster.weapons = F.FunArraySub(18,'MyGame.Sample.Weapon',4,'_fb_weapons_arr',true)
+Monster.weapons = F.FunArraySub(18,'MyGame.Sample.Weapon',4,'_fb_weapons_arr',true,4,false)
 
 Monster.equipped_type = F.FunField(20,N.Uint8,0)
 

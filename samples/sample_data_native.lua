@@ -3,6 +3,7 @@
 -- package.cpath = string.format("/Users/yubin/Documents/dev/lua/lua-flatbuffers-master/external/lua-flatbuffers/?.so;%s",package.cpath)
 -- package.path = string.format("/Users/yubin/Documents/dev/lua/lua-flatbuffers-master/external/lua-flatbuffers/?.lua;%s",package.path)
 package.cpath = string.format("/Users/yubin/Library/Developer/Xcode/DerivedData/flatbuffersnative-erfjxmselgihdweufjfcsooyxvke/Build/Products/Debug/?.dylib;%s",package.cpath)
+-- package.cpath = string.format("../lua_fix/?.so;%s",package.cpath)
 package.path = string.format("../lua_fix/?.lua;%s",package.path)
 package.path = string.format("./luafix/?.lua;%s",package.path)
 
@@ -60,10 +61,21 @@ local function checkReadBuffer(buf, offset, sizePrefix)
             for k,v in pairs(mon.weapons[i]) do
                 print("pairs--weapons",k,v)
             end
-           assert(mon.weapons[i].name == expected[i].w)
-           assert(mon.weapons[i].damage == expected[i].d)
+           if expected[i] then
+               assert(mon.weapons[i].name == expected[i].w)
+               assert(mon.weapons[i].damage == expected[i].d)
+           end
         end
 
+        if i == 1 then
+            assert(mon.weapons.cxe.damage == 110)
+            assert(mon.weapons.dxe.damage == 120)
+            assert(mon.weapons.xxe.damage == 130)
+            assert(mon.weapons.zxe.damage == 140)
+        end
+
+        print(mon.weapons.axe.damage)
+        assert(mon.weapons.axe.damage == 100)
         assert(mon.equipped_type == equipment.Weapon)
 
         local unionWeapon = weapon(mon.equipped.bytes,mon.equipped.pos)

@@ -71,6 +71,12 @@ public:
         binaryArray = binaryArrayRef->ptr;
     }
     
+    View(BinaryArray* _binaryArray, uint32_t position)
+    : position(position) {
+        binaryArrayRef = nullptr;
+        binaryArray = binaryArrayRef->ptr;
+    }
+    
     View()
     {
         binaryArrayRef = nullptr;
@@ -133,6 +139,11 @@ public:
             this->position = 0;
         }
     }
+    void updateBinaryArray(BinaryArray* _binaryArray, uint32_t position)
+    {
+        binaryArray = _binaryArray;
+        this->position = position;
+    }
     
     template<typename T>
     T Get(uint32_t offset) {
@@ -147,6 +158,68 @@ public:
     BinaryArray* binaryArray;
     uint32_t position;
 };
+template<typename T> struct CompareToHelper {
+  static int CompareTo(const T a, const T b) {
+      if (b > a) return 1;
+      else if(b < a) return -1;
+      return 0;
+  }
+};
+
+template<typename T>
+static int bsearchnum(int vectorLocation,int sizeTable,int size,bool isTable,T key, View* view) {
+  int span = view->Get<int>(vectorLocation - 4);//lvector length
+  int start = 0;
+  View viewObj;
+  while (span != 0) {
+    int middle = span / 2;
+    int tableOffset = vectorLocation + sizeTable * (start + middle);
+    if(isTable)
+    {
+        tableOffset = view->Indirect(tableOffset);
+    }
+    viewObj.updateBinaryArray(view->binaryArray,tableOffset);
+    uint32_t offset = viewObj.Offset(size);
+    int comp = CompareToHelper<T>::CompareTo(viewObj.Get<T>(offset+tableOffset),key);
+    if (comp > 0) {
+      span = middle;
+    } else if (comp < 0) {
+      middle++;
+      start += middle;
+      span -= middle;
+    } else {
+      return tableOffset;
+    }
+  }
+  return -1;
+}
+
+static int bsearchstring(int vectorLocation,int sizeTable,int size,bool isTable,const char* key, View* view) {
+  int span = view->Get<int>(vectorLocation - 4);//lvector length
+  int start = 0;
+  View viewObj;
+  while (span != 0) {
+    int middle = span / 2;
+    int tableOffset = vectorLocation + sizeTable * (start + middle);
+    if(isTable)
+    {
+        tableOffset = view->Indirect(tableOffset);
+    }
+    viewObj.updateBinaryArray(view->binaryArray,tableOffset);
+    uint32_t offset = viewObj.Offset(size);
+    int comp = strcmp(viewObj.String(offset+tableOffset).string,key);
+    if (comp > 0) {
+      span = middle;
+    } else if (comp < 0) {
+      middle++;
+      start += middle;
+      span -= middle;
+    } else {
+      return tableOffset;
+    }
+  }
+  return -1;
+}
 
 enum ENumType {
     ENumType_NORMAL = 0,
@@ -530,6 +603,77 @@ static int view_get(lua_State* L) {
     return 0;
 }
 
+static int view_search_num(lua_State* L) {
+    View* view = check_view(L, 1);
+    int vectorLocation = (int)luaL_checkinteger(L, 2);
+    int sizeTable = (int)luaL_checkinteger(L, 3);
+    int size = (int)luaL_checkinteger(L, 4);
+    bool isTable = lua_toboolean(L,5);
+    lua_Integer value = luaL_checkinteger(L, 7);
+    
+    NumType* num_type = get_num_type(L,6);
+    if(num_type)
+    {
+        switch(num_type->type)
+        {
+            case ENumType_Bool:
+                lua_pushinteger(L,bsearchnum<uint8_t>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Uint8:
+                lua_pushinteger(L,bsearchnum<uint8_t>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Uint16:
+                lua_pushinteger(L,bsearchnum<uint16_t>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Uint32:
+                lua_pushinteger(L,bsearchnum<uint32_t>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Uint64:
+                lua_pushinteger(L,bsearchnum<uint64_t>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Int8:
+                lua_pushinteger(L,bsearchnum<int8_t>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Int16:
+                lua_pushinteger(L,bsearchnum<int16_t>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Int32:
+                lua_pushinteger(L,bsearchnum<int32_t>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Int64:
+                lua_pushinteger(L,bsearchnum<int64_t>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Float32:
+                lua_pushinteger(L,bsearchnum<float>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            case ENumType_Float64:
+                lua_pushinteger(L,bsearchnum<double>(vectorLocation,sizeTable,size,isTable,value,view));
+                return 1;
+            default:
+                lua_pushliteral(L, "incorrect argument type");
+                lua_error(L);
+                return 0;
+        }
+    }
+
+    lua_pushliteral(L, "incorrect argument");
+    lua_error(L);
+    return 0;
+}
+
+static int view_search_string(lua_State* L) {
+    View* view = check_view(L, 1);
+
+    int vectorLocation = (int)luaL_checkinteger(L, 2);
+    int sizeTable = (int)luaL_checkinteger(L, 3);
+    int size = (int)luaL_checkinteger(L, 4);
+    bool isTable = lua_toboolean(L,5);
+    const char* key = luaL_checkstring(L, 6);
+    
+    lua_pushinteger(L,bsearchstring(vectorLocation,sizeTable,size,isTable,key,view));
+    return 1;
+}
+
 static int view_index(lua_State* L) {
     View* view = check_view(L, 1);
     const char* key = luaL_checkstring(L, 2);
@@ -561,6 +705,8 @@ static void register_view(lua_State* L) {
         { "Vector", view_vector },
         { "Union", view_union },
         { "Get", view_get },
+        { "LookUpNum", view_search_num },
+        { "LookUpString", view_search_string },
         { nullptr, nullptr }
     };
 
@@ -572,6 +718,8 @@ static void register_view(lua_State* L) {
         { "Vector", view_vector },
         { "Union", view_union },
         { "Get", view_get },
+        { "LookUpNum", view_search_num },
+        { "LookUpString", view_search_string },
         { "__index", view_index },
         { "__gc", view_gc },
         { nullptr, nullptr }

@@ -311,6 +311,33 @@ class LuaGenerator : public BaseGenerator {
     } else {
       code += "false";
     }
+    if (vectortype.struct_def->has_key) {
+        flatbuffers::FieldDef *key_field = nullptr;
+        for (auto it = vectortype.struct_def->fields.vec.begin();
+             it != vectortype.struct_def->fields.vec.end(); ++it) {
+          auto &field = **it;
+          if (field.deprecated) continue;
+          if (field.key)
+          {
+              key_field = &field;
+              break;
+          }
+        }
+
+        if(key_field)
+        {
+          code += ",";
+          code += NumToString(key_field->value.offset);
+          code += ",";
+          if (!IsString(key_field->value.type)) {
+            code += "true";
+            code += ",N.";
+            code += MakeCamel(GenTypeGet(key_field->value.type));
+          } else {
+            code += "false";
+          }
+        }
+    }
     code += ")\n\n";
 
   }

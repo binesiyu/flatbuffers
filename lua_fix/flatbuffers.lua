@@ -244,22 +244,40 @@ local function commonipairs(t)
     return stateless_iter, t, 0
 end
 
-function F.FunArray(size,ntype,ntypesize,key,default)
+local function createFunArrayLen(self,size)
+    return function()
+            local o = self.__view:Offset(size)
+            if o ~= 0 then
+                return self.__view:VectorLen(o)
+            end
+            return 0
+        end
+end
+
+local function createArrayMetaDefault(self,size)
+    local meta = {
+        -- __call = function(self,buf,pos)
+        --     self.view = fb.view.New(buf, pos)
+        -- end
+        -- __newindex = tablereadonly,
+        -- __newindex = rawset,
+        __len = createFunArrayLen(self,size),
+        __ipairs = commonipairs,
+        __pairs = commonipairs
+    }
+    return meta
+end
+
+function F.FunArray(size,ntype,ntypesize,cachekey,default)
     return function(self)
-        local ret = rawget(self, key)
+        local ret = rawget(self, cachekey)
         if ret then
             return ret
         end
-        ret = setmetatable({}, {
-                __len = function(_)
-                    local o = self.__view:Offset(size)
-                    if o ~= 0 then
-                        return self.__view:VectorLen(o)
-                    end
-                    return 0
-                end,
 
-                __index = function(_, j)
+        local mt = createArrayMetaDefault(self,size)
+
+        mt.__index = function(_, j)
                     if type(j) == 'number' then
                         local o = self.__view:Offset(size)
                         if o ~= 0 then
@@ -270,32 +288,42 @@ function F.FunArray(size,ntype,ntypesize,key,default)
                     else
                         return rawget(self, j)
                     end
-                end,
-
-                __ipairs = commonipairs,
-                }
-        )
-        rawset(self, key, ret)
+                end
+        ret = setmetatable({}, mt)
+        rawset(self, cachekey, ret)
         return ret
     end
 end
 
-function F.FunArrayCfg(size,cfg,ntypesize,key,isTable)
+function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,key,iskeynum,keytype)
     return function(self)
-        local ret = rawget(self, key)
+        local ret = rawget(self, cachekey)
         if ret then
             return ret
         end
-        ret = setmetatable({}, {
-                __len = function(_)
-                    local o = self.__view:Offset(size)
-                    if o ~= 0 then
-                        return self.__view:VectorLen(o)
-                    end
-                    return 0
-                end,
 
-                __index = function(_, j)
+        local mt = createArrayMetaDefault(self,size)
+        if key then
+            if iskeynum then
+                mt.__index = function(_, j)
+                    if type(j) == 'number' then
+                        local o = self.__view:Offset(size)
+                        if o ~= 0 then
+                            local x = self.__view:Vector(o)
+
+                            -- x = x + ((j-1) * ntypesize)
+                            x = self.__view:LookUpNum(x,ntypesize,key,isTable,j,keytype)
+                            if x >= 0 then
+                                local obj = cfg(self.__view.bytes, x)
+                                return obj
+                            end
+                        end
+                    else
+                        return rawget(self, j)
+                    end
+                end
+            else
+                mt.__index = function(_, j)
                     if type(j) == 'number' then
                         local o = self.__view:Offset(size)
                         if o ~= 0 then
@@ -308,21 +336,48 @@ function F.FunArrayCfg(size,cfg,ntypesize,key,isTable)
                             return obj
                         end
                     else
-                        return rawget(self, j)
-                    end
-                end,
+                        local o = self.__view:Offset(size)
+                        if o ~= 0 then
+                            local x = self.__view:Vector(o)
 
-                __ipairs = commonipairs,
-                }
-        )
-        rawset(self, key, ret)
+                            -- x = x + ((j-1) * ntypesize)
+                            x = self.__view:LookUpString(x,ntypesize,key,isTable,j)
+                            if x >= 0 then
+                                local obj = cfg(self.__view.bytes, x)
+                                return obj
+                            end
+                        end
+                        -- return rawget(self, j)
+                    end
+                end
+            end
+        else
+            mt.__index = function(_, j)
+                if type(j) == 'number' then
+                    local o = self.__view:Offset(size)
+                    if o ~= 0 then
+                        local x = self.__view:Vector(o)
+                        x = x + ((j-1) * ntypesize)
+                        if isTable then
+                            x = self.__view:Indirect(x)
+                        end
+                        local obj = cfg(self.__view.bytes, x)
+                        return obj
+                    end
+                else
+                    return rawget(self, j)
+                end
+            end
+        end
+        ret = setmetatable({}, mt)
+        rawset(self, cachekey, ret)
         return ret
     end
 end
 
-function F.FunArraySub(size,path,ntypesize,key,isTable)
+function F.FunArraySub(size,path,ntypesize,cachekey,isTable,key,iskeynum,keytype)
     local cfg = require(path)
-    return F.FunArrayCfg(size,cfg,ntypesize,key,isTable)
+    return F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,key,iskeynum,keytype)
 end
 
 local function getFileData(name)
