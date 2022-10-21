@@ -132,21 +132,21 @@ local function createMetaCacheWeak(cfg,obj)
     return meta
 end
 
-function F.New(cfg,buf,offset,sizePrefix)
+local function New(cfg,buf,offset,sizePrefix)
     local obj = createObj(buf,offset,sizePrefix)
     -- set mt
     setmetatable(obj, createMeta(cfg))
     return obj
 end
 
-function F.NewCache(cfg,buf,offset,sizePrefix)
+local function NewCache(cfg,buf,offset,sizePrefix)
     local obj = createObj(buf,offset,sizePrefix)
     -- set mt
     setmetatable(obj, createMetaCache(cfg))
     return obj
 end
 
-function F.NewCacheWeak(cfg,buf,offset,sizePrefix)
+local function NewCacheWeak(cfg,buf,offset,sizePrefix)
     local obj = createObj(buf,offset,sizePrefix)
     -- set mt
     setmetatable(obj, createMetaCacheWeak(cfg,obj))
@@ -159,8 +159,8 @@ function F.NewCfg()
     local cfg = {}
     -- set mt
     setmetatable(cfg, {
-        __call = F.New,
-        -- __call = F.NewCacheWeak,
+        __call = New,
+        -- __call = NewCacheWeak,
      })
     return cfg
 end
@@ -328,43 +328,87 @@ local function createArrayMetaDefault(self,size)
     return meta
 end
 
-function F.FunArray(size,ntype,ntypesize,cachekey,default)
+local function createArrayFun(size,cachekey,creatfun)
     return function(self)
         local ret = rawget(self, cachekey)
         if ret then
             return ret
         end
 
-        local mt = createArrayMetaDefault(self,size)
-
-        mt.__index = function(_, j)
-                    if type(j) == 'number' then
-                        local o = self.__view:Offset(size)
-                        if o ~= 0 then
-                            local a = self.__view:Vector(o)
-                            return self.__view:Get(ntype, a + ((j-1) * ntypesize))
-                        end
-                        return default
-                    else
-                        return rawget(self, j)
-                    end
-                end
-        ret = setmetatable({}, mt)
+        local meta = createArrayMetaDefault(self,size)
+        local obj = {}
+        creatfun(self,meta)
+        ret = setmetatable(obj, meta)
         rawset(self, cachekey, ret)
         return ret
     end
 end
 
-function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,keytype)
+local function createArrayFunCache(size,cachekey,creatfun)
     return function(self)
         local ret = rawget(self, cachekey)
         if ret then
             return ret
         end
 
-        local mt = createArrayMetaDefault(self,size)
-        if key then
-            if iskeynum then
+        local meta = createArrayMetaDefault(self,size)
+        local obj = {}
+        creatfun(self,meta,obj)
+        ret = setmetatable(obj, meta)
+        rawset(self, cachekey, ret)
+        return ret
+    end
+end
+
+local function createArrayFunCacheWeak(size,cachekey,creatfun)
+    return function(self)
+        local ret = rawget(self, cachekey)
+        if ret then
+            return ret
+        end
+
+        local meta = createArrayMetaDefault(self,size)
+
+        local obj = {}
+        local index = {}
+        creatfun(self,meta,index)
+        local metameat = {}
+        metameat.__index = meta.__index
+        metameat.__mode = "kv"
+
+        meta.__index = index
+
+        -- set mt
+        setmetatable(index, metameat)
+
+        ret = setmetatable(obj, meta)
+
+        rawset(self, cachekey, ret)
+        return ret
+    end
+end
+
+function F.FunArray(size,ntype,ntypesize,cachekey,default)
+    return createArrayFun(size,cachekey,function(self,mt)
+            mt.__index = function(_, j)
+                        if type(j) == 'number' then
+                            local o = self.__view:Offset(size)
+                            if o ~= 0 then
+                                local a = self.__view:Vector(o)
+                                return self.__view:Get(ntype, a + ((j-1) * ntypesize))
+                            end
+                            return default
+                        else
+                            return rawget(self, j)
+                        end
+                end
+            end)
+end
+
+function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,keytype)
+    if key then
+        if iskeynum then
+            return createArrayFun(size,cachekey,function(self,mt,index)
                 mt.__index = function(_, j)
                     if type(j) == 'number' then
                         local o = self.__view:Offset(size)
@@ -375,6 +419,10 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                             x = self.__view:LookUpNum(x,ntypesize,key,isTable,keytype,j)
                             if x >= 0 then
                                 local obj = cfg(self.__view.bytes, x)
+                                --值缓存起来
+                                if index then
+                                    rawset(index,j,obj)
+                                end
                                 return obj
                             end
                         end
@@ -401,7 +449,9 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                 end
                 mt.__ipairs = arrayipairs
                 mt.__pairs = arraypairs(keyname)
-            else
+            end)
+        else
+            return createArrayFun(size,cachekey,function(self,mt,index)
                 mt.__index = function(_, j)
                     if type(j) == 'number' then
                         local o = self.__view:Offset(size)
@@ -423,6 +473,10 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                             x = self.__view:LookUpString(x,ntypesize,key,isTable,j)
                             if x >= 0 then
                                 local obj = cfg(self.__view.bytes, x)
+                                --值缓存起来
+                                if index then
+                                    rawset(index,j,obj)
+                                end
                                 return obj
                             end
                             return rawget(self, j)
@@ -431,8 +485,10 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                     end
                 end
                 mt.__pairs = arraypairsstring(keyname)
-            end
-        else
+            end)
+        end
+    else
+        return createArrayFun(size,cachekey,function(self,mt,index)
             mt.__index = function(_, j)
                 if type(j) == 'number' then
                     local o = self.__view:Offset(size)
@@ -443,16 +499,17 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                             x = self.__view:Indirect(x)
                         end
                         local obj = cfg(self.__view.bytes, x)
+                        --值缓存起来
+                        if index then
+                            rawset(index,j,obj)
+                        end
                         return obj
                     end
                 else
                     return rawget(self, j)
                 end
             end
-        end
-        ret = setmetatable({}, mt)
-        rawset(self, cachekey, ret)
-        return ret
+        end)
     end
 end
 
@@ -477,4 +534,12 @@ function F.createCfg(name,root)
     return {}
 end
 
+
+
+-- local useCache = false
+local useCache = true
+if useCache then
+    New = NewCache
+    createArrayFun = createArrayFunCacheWeak
+end
 return m
