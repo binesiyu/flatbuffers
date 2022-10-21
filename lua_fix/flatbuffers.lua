@@ -68,9 +68,9 @@ local function createIndexCacheWeak(mt,index,obj)
     end
 end
 
--- local tablereadonly = function(_,key,value)
---     assert(false,string.format("table is readonly key[%s] value[%s]",key,value))
--- end
+local tablereadonly = function(_,key,value)
+    assert(false,string.format("table is readonly key[%s] value[%s]",key,value))
+end
 
 local function commonpairs(cfg)
     return function(tbl)
@@ -98,7 +98,7 @@ local function createMetaDefault(cfg)
         -- __call = function(self,buf,pos)
         --     self.view = fb.view.New(buf, pos)
         -- end
-        -- __newindex = tablereadonly,
+        __newindex = tablereadonly,
         -- __newindex = rawset,
         __pairs = commonpairs(cfg),
     }
@@ -318,7 +318,7 @@ local function createArrayMetaDefault(self,size)
         -- __call = function(self,buf,pos)
         --     self.view = fb.view.New(buf, pos)
         -- end
-        -- __newindex = tablereadonly,
+        __newindex = tablereadonly,
         -- __newindex = rawset,
         -- __mode = "kv",
         __len = createFunArrayLen(self,size),
