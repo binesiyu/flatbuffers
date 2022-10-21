@@ -441,6 +441,13 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                                 x = self.__view:Indirect(x)
                             end
                             local obj = cfg(self.__view.bytes, x)
+                            --值缓存起来
+                            if index then
+                                local keyvalue = obj[keyname]
+                                if not rawget(index,keyvalue) then
+                                    rawset(index,keyvalue,obj)
+                                end
+                            end
                             return obj
                         end
                     else
@@ -462,6 +469,13 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                                 x = self.__view:Indirect(x)
                             end
                             local obj = cfg(self.__view.bytes, x)
+                            --值缓存起来
+                            if index then
+                                local keyvalue = obj[keyname]
+                                if not rawget(index,keyvalue) then
+                                    rawset(index,keyvalue,obj)
+                                end
+                            end
                             return obj
                         end
                     else
@@ -535,10 +549,19 @@ function F.createCfg(name,root)
 end
 
 
-
--- local useCache = false
-local useCache = true
-if useCache then
+-------是否开启缓存配置
+--默认配置不使用任何缓存
+local useCache = 3 --默认配置不使用任何缓存
+--只缓存表的创建,保证表是唯一的
+if useCache == 1 then
+    New = New --各个字段的缓存情况
+    createArrayFun = createArrayFunCache--各个struct/table有缓存配置
+--全缓存
+elseif useCache == 2 then
+    New = NewCache
+    createArrayFun = createArrayFunCache
+--表缓存使用weak机制
+elseif useCache == 3 then
     New = NewCache
     createArrayFun = createArrayFunCacheWeak
 end
