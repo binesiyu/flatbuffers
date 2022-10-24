@@ -27,7 +27,15 @@ local function checkReadBuffer(buf, offset, sizePrefix)
     print("id",monroot[3].id)
     print("id",monroot[3].id)
     for id,mon in pairs(monroot) do
-        -- print(id,"id")
+        print(id,"id",mon)
+    end
+    collectgarbage("collect")
+    for id,mon in pairs(monroot) do
+        print(id,"id2",mon)
+    end
+
+    for id,mon in pairs(monroot) do
+        print(id,"id3",mon)
     end
 
     for i,mon in ipairs(monroot) do

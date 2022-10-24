@@ -54,13 +54,13 @@ local function createIndexCache(mt)
     end
 end
 
-local function createIndexCacheWeak(mt,index,obj)
+local function createIndexCacheWeak(mt,cacheTable,obj)
     return function(_,key)
         local f = rawget(mt, key)
         if f then
             local value = f(obj)
             --值缓存起来
-            rawset(index,key,value)
+            rawset(cacheTable,key,value)
             return value
         end
 
@@ -121,14 +121,14 @@ end
 --使用cache + weak,兼顾性能与内存
 local function createMetaCacheWeak(cfg,obj)
     local meta = createMetaDefault(cfg)
-    local index = {}
-    meta.__index = index
+    local cacheTable = {}
+    meta.__index = cacheTable
 
     local metameat = {}
-    metameat.__index = createIndexCacheWeak(cfg,index,obj)
+    metameat.__index = createIndexCacheWeak(cfg,cacheTable,obj)
     metameat.__mode = "kv"
     -- set mt
-    setmetatable(index, metameat)
+    setmetatable(cacheTable, metameat)
     return meta
 end
 
@@ -353,12 +353,17 @@ local function createArrayFunCache(size,cachekey,creatfun)
 
         local meta = createArrayMetaDefault(self,size)
         local obj = {}
-        creatfun(self,meta,obj)
+        local cacheTableIndex = {}
+        creatfun(self,meta,obj,cacheTableIndex)
         ret = setmetatable(obj, meta)
         rawset(self, cachekey, ret)
         return ret
     end
 end
+
+local metaCacheIndex = {
+    __mode = "kv",
+}
 
 local function createArrayFunCacheWeak(size,cachekey,creatfun)
     return function(self)
@@ -370,16 +375,19 @@ local function createArrayFunCacheWeak(size,cachekey,creatfun)
         local meta = createArrayMetaDefault(self,size)
 
         local obj = {}
-        local index = {}
-        creatfun(self,meta,index)
+        local cacheTable = {}
+        local cacheTableIndex = {}
+        setmetatable(cacheTableIndex, metaCacheIndex)
+
+        creatfun(self,meta,cacheTable,cacheTableIndex)
         local metameat = {}
         metameat.__index = meta.__index
         metameat.__mode = "kv"
 
-        meta.__index = index
+        meta.__index = cacheTable
 
         -- set mt
-        setmetatable(index, metameat)
+        setmetatable(cacheTable, metameat)
 
         ret = setmetatable(obj, meta)
 
@@ -408,20 +416,24 @@ end
 function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,keytype)
     if key then
         if iskeynum then
-            return createArrayFun(size,cachekey,function(self,mt,index)
+            return createArrayFun(size,cachekey,function(self,mt,cacheTable,cacheTableIndex)
                 mt.__index = function(_, j)
                     if type(j) == 'number' then
                         local o = self.__view:Offset(size)
                         if o ~= 0 then
                             local x = self.__view:Vector(o)
+                            local index
 
                             -- x = x + ((j-1) * ntypesize)
-                            x = self.__view:LookUpNum(x,ntypesize,key,isTable,keytype,j)
+                            x,index = self.__view:LookUpNum(x,ntypesize,key,isTable,keytype,j)
                             if x >= 0 then
                                 local obj = cfg(self.__view.bytes, x)
                                 --值缓存起来
-                                if index then
-                                    rawset(index,j,obj)
+                                if cacheTable then
+                                    rawset(cacheTable,j,obj)
+                                end
+                                if cacheTableIndex then
+                                    rawset(cacheTableIndex,index,obj)
                                 end
                                 return obj
                             end
@@ -433,6 +445,11 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                 --用call指代原来的__index
                 mt.__call = function(_, j)
                     if type(j) == 'number' then
+                        --优先从缓存里读取
+                        if cacheTableIndex and cacheTableIndex[j] then
+                            return cacheTableIndex[j]
+                        end
+
                         local o = self.__view:Offset(size)
                         if o ~= 0 then
                             local x = self.__view:Vector(o)
@@ -442,11 +459,14 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                             end
                             local obj = cfg(self.__view.bytes, x)
                             --值缓存起来
-                            if index then
+                            if cacheTable then
                                 local keyvalue = obj[keyname]
-                                if not rawget(index,keyvalue) then
-                                    rawset(index,keyvalue,obj)
-                                end
+                                -- if not rawget(cacheTable,keyvalue) then
+                                    rawset(cacheTable,keyvalue,obj)
+                                -- end
+                            end
+                            if cacheTableIndex then
+                                rawset(cacheTableIndex,j,obj)
                             end
                             return obj
                         end
@@ -458,9 +478,13 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                 mt.__pairs = arraypairs(keyname)
             end)
         else
-            return createArrayFun(size,cachekey,function(self,mt,index)
+            return createArrayFun(size,cachekey,function(self,mt,cacheTable,cacheTableIndex)
                 mt.__index = function(_, j)
                     if type(j) == 'number' then
+                        --优先从缓存里读取
+                        if cacheTableIndex and cacheTableIndex[j] then
+                            return cacheTableIndex[j]
+                        end
                         local o = self.__view:Offset(size)
                         if o ~= 0 then
                             local x = self.__view:Vector(o)
@@ -470,11 +494,14 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                             end
                             local obj = cfg(self.__view.bytes, x)
                             --值缓存起来
-                            if index then
+                            if cacheTable then
                                 local keyvalue = obj[keyname]
-                                if not rawget(index,keyvalue) then
-                                    rawset(index,keyvalue,obj)
-                                end
+                                -- if not rawget(cacheTable,keyvalue) then
+                                    rawset(cacheTable,keyvalue,obj)
+                                -- end
+                            end
+                            if cacheTableIndex then
+                                rawset(cacheTableIndex,j,obj)
                             end
                             return obj
                         end
@@ -488,8 +515,8 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                             if x >= 0 then
                                 local obj = cfg(self.__view.bytes, x)
                                 --值缓存起来
-                                if index then
-                                    rawset(index,j,obj)
+                                if cacheTable then
+                                    rawset(cacheTable,j,obj)
                                 end
                                 return obj
                             end
@@ -502,7 +529,7 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
             end)
         end
     else
-        return createArrayFun(size,cachekey,function(self,mt,index)
+        return createArrayFun(size,cachekey,function(self,mt,cacheTable)
             mt.__index = function(_, j)
                 if type(j) == 'number' then
                     local o = self.__view:Offset(size)
@@ -514,8 +541,8 @@ function F.FunArrayCfg(size,cfg,ntypesize,cachekey,isTable,keyname,key,iskeynum,
                         end
                         local obj = cfg(self.__view.bytes, x)
                         --值缓存起来
-                        if index then
-                            rawset(index,j,obj)
+                        if cacheTable then
+                            rawset(cacheTable,j,obj)
                         end
                         return obj
                     end

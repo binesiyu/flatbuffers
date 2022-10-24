@@ -167,13 +167,14 @@ template<typename T> struct CompareToHelper {
 };
 
 template<typename T>
-static int bsearchnum(int vectorLocation,int sizeTable,int size,bool isTable,T key, View* view) {
+static int bsearchnum(lua_State* L,int vectorLocation,int sizeTable,int size,bool isTable,T key, View* view) {
   int span = view->Get<int>(vectorLocation - 4);//lvector length
   int start = 0;
   View viewObj;
   while (span != 0) {
     int middle = span / 2;
-    int tableOffset = vectorLocation + sizeTable * (start + middle);
+    int index = start + middle;
+    int tableOffset = vectorLocation + sizeTable * (index);
     if(isTable)
     {
         tableOffset = view->Indirect(tableOffset);
@@ -188,19 +189,23 @@ static int bsearchnum(int vectorLocation,int sizeTable,int size,bool isTable,T k
       start += middle;
       span -= middle;
     } else {
-      return tableOffset;
+        lua_pushinteger(L,tableOffset);
+        lua_pushinteger(L,index);
+        return 2;
     }
   }
-  return -1;
+    lua_pushinteger(L,-1);
+    return 1;
 }
 
-static int bsearchstring(int vectorLocation,int sizeTable,int size,bool isTable,const char* key, View* view) {
+static int bsearchstring(lua_State* L,int vectorLocation,int sizeTable,int size,bool isTable,const char* key, View* view) {
   int span = view->Get<int>(vectorLocation - 4);//lvector length
   int start = 0;
   View viewObj;
   while (span != 0) {
     int middle = span / 2;
-    int tableOffset = vectorLocation + sizeTable * (start + middle);
+    int index = start + middle;
+    int tableOffset = vectorLocation + sizeTable * (index);
     if(isTable)
     {
         tableOffset = view->Indirect(tableOffset);
@@ -215,10 +220,13 @@ static int bsearchstring(int vectorLocation,int sizeTable,int size,bool isTable,
       start += middle;
       span -= middle;
     } else {
-      return tableOffset;
+        lua_pushinteger(L,tableOffset);
+        lua_pushinteger(L,index);
+        return 2;
     }
   }
-  return -1;
+  lua_pushinteger(L,-1);
+  return 1;
 }
 
 enum ENumType {
@@ -617,38 +625,27 @@ static int view_search_num(lua_State* L) {
         switch(num_type->type)
         {
             case ENumType_Bool:
-                lua_pushinteger(L,bsearchnum<uint8_t>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<uint8_t>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Uint8:
-                lua_pushinteger(L,bsearchnum<uint8_t>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<uint8_t>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Uint16:
-                lua_pushinteger(L,bsearchnum<uint16_t>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<uint16_t>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Uint32:
-                lua_pushinteger(L,bsearchnum<uint32_t>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<uint32_t>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Uint64:
-                lua_pushinteger(L,bsearchnum<uint64_t>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<uint64_t>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Int8:
-                lua_pushinteger(L,bsearchnum<int8_t>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<int8_t>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Int16:
-                lua_pushinteger(L,bsearchnum<int16_t>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<int16_t>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Int32:
-                lua_pushinteger(L,bsearchnum<int32_t>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<int32_t>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Int64:
-                lua_pushinteger(L,bsearchnum<int64_t>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<int64_t>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Float32:
-                lua_pushinteger(L,bsearchnum<float>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<float>(L,vectorLocation,sizeTable,size,isTable,value,view);
             case ENumType_Float64:
-                lua_pushinteger(L,bsearchnum<double>(vectorLocation,sizeTable,size,isTable,value,view));
-                return 1;
+                return bsearchnum<double>(L,vectorLocation,sizeTable,size,isTable,value,view);
             default:
                 lua_pushliteral(L, "incorrect argument type");
                 lua_error(L);
@@ -670,8 +667,7 @@ static int view_search_string(lua_State* L) {
     bool isTable = lua_toboolean(L,5);
     const char* key = luaL_checkstring(L, 6);
     
-    lua_pushinteger(L,bsearchstring(vectorLocation,sizeTable,size,isTable,key,view));
-    return 1;
+    return bsearchstring(L,vectorLocation,sizeTable,size,isTable,key,view);
 }
 
 static int view_index(lua_State* L) {
