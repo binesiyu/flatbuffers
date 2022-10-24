@@ -190,7 +190,7 @@ static int bsearchnum(lua_State* L,int vectorLocation,int sizeTable,int size,boo
       span -= middle;
     } else {
         lua_pushinteger(L,tableOffset);
-        lua_pushinteger(L,index);
+        lua_pushinteger(L,index+1);
         return 2;
     }
   }
@@ -221,7 +221,7 @@ static int bsearchstring(lua_State* L,int vectorLocation,int sizeTable,int size,
       span -= middle;
     } else {
         lua_pushinteger(L,tableOffset);
-        lua_pushinteger(L,index);
+        lua_pushinteger(L,index+1);
         return 2;
     }
   }

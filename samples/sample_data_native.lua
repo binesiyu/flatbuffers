@@ -22,14 +22,16 @@ local function checkReadBuffer(buf, offset, sizePrefix)
     -- collectgarbage("collect")
     -- print("释放前lua:", collectgarbage("count"))
     local monroot = require("MyGame.Sample.Monster")
-    print("id",monroot[3].id)
+    print("id",monroot[3].id,monroot[3])
     collectgarbage("collect")
-    print("id",monroot[3].id)
-    print("id",monroot[3].id)
+    print("id",monroot[3].id,monroot[3])
+    print("id",monroot[3].id,monroot[3])
+    print("id",monroot[4].id,monroot[4])
     for id,mon in pairs(monroot) do
         print(id,"id",mon)
     end
     collectgarbage("collect")
+    local test = {}
     for id,mon in pairs(monroot) do
         print(id,"id2",mon)
     end
