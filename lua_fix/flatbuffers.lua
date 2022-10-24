@@ -18,8 +18,8 @@ local F = {}
 m.F = F
 
 
-local function createObj(buf,offset,sizePrefix)
-    local o = {}
+local function createObj(buf,offset,sizePrefix,obj)
+    local o = obj or {}
     if sizePrefix then
         local n = N.UOffsetT:Unpack(buf, offset)
         offset = offset + n
@@ -132,22 +132,22 @@ local function createMetaCacheWeak(cfg,obj)
     return meta
 end
 
-local function New(cfg,buf,offset,sizePrefix)
-    local obj = createObj(buf,offset,sizePrefix)
+local function New(cfg,buf,offset,sizePrefix,obj)
+    local obj = createObj(buf,offset,sizePrefix,obj)
     -- set mt
     setmetatable(obj, createMeta(cfg))
     return obj
 end
 
-local function NewCache(cfg,buf,offset,sizePrefix)
-    local obj = createObj(buf,offset,sizePrefix)
+local function NewCache(cfg,buf,offset,sizePrefix,obj)
+    local obj = createObj(buf,offset,sizePrefix,obj)
     -- set mt
     setmetatable(obj, createMetaCache(cfg))
     return obj
 end
 
-local function NewCacheWeak(cfg,buf,offset,sizePrefix)
-    local obj = createObj(buf,offset,sizePrefix)
+local function NewCacheWeak(cfg,buf,offset,sizePrefix,obj)
+    local obj = createObj(buf,offset,sizePrefix,obj)
     -- set mt
     setmetatable(obj, createMetaCacheWeak(cfg,obj))
     return obj
@@ -566,13 +566,61 @@ local function getFileData(name)
     return fileData
 end
 
-function F.createCfg(name,root)
+local function createCfg(name,root,obj)
+    -- print("createCfg",name,root,obj)
     local fileData = getFileData(name)
     if fileData then
-        local data = root(binaryArray.New(fileData), 0,true)
+        local data = root(binaryArray.New(fileData), 0,true,obj)
         return data and data.items or {}
     end
     return {}
+end
+
+F.createCfg = createCfg
+
+local function makeObj(t)
+    --清空元表
+    setmetatable(t, nil)
+
+    --获取参数并清空
+    local name = t.__name
+    local root = t.__root
+    t.__name = nil
+    t.__root = nil
+    local  obj  = createCfg(name,root,t)
+    setmetatable(t, getmetatable(obj))
+end
+
+--代理类的元表
+local metaProxy = {
+    __index = function(t,k)
+        makeObj(t)
+        return t[k]
+    end,
+    __newindex = function(t,k,v)
+        makeObj(t)
+        t[k] = v
+    end,
+    __len = function(t)
+        makeObj(t)
+        return #t
+    end,
+    __pairs = function(t)
+        makeObj(t)
+        return pairs(t)
+    end,
+    __ipairs = function(t)
+        makeObj(t)
+        return ipairs(t)
+    end,
+}
+
+function F.createCfgLazyLoad(name,root)
+    local proxy = {}
+    proxy.__name = name
+    proxy.__root = root
+    setmetatable(proxy, metaProxy)
+    return proxy
 end
 
 
@@ -591,5 +639,10 @@ elseif useCache == 2 then
 elseif useCache == 3 then
     New = NewCache
     createArrayFun = createArrayFunCacheWeak
+end
+
+local useLazyLoad = true
+if useLazyLoad then
+    F.createCfg = F.createCfgLazyLoad
 end
 return m
