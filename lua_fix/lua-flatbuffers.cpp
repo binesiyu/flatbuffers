@@ -100,6 +100,7 @@ public:
     }
 
     SizedString String(uint32_t offset) {
+        offset += position;
         offset = Indirect(offset);
         uint32_t start = offset + sizeof(uint32_t);
         uint32_t length = UnpackUInt32(offset);
@@ -150,6 +151,11 @@ public:
         return *((T*)binaryArray->Data(offset));
     }
 
+    template<typename T>
+    T GetPos(uint32_t offset) {
+        return *((T*)binaryArray->Data(offset + position));
+    }
+    
     uint32_t UnpackUInt32(uint32_t offset) {
         return *((uint32_t*)binaryArray->Data(offset));
     }
@@ -181,7 +187,7 @@ static int bsearchnum(lua_State* L,int vectorLocation,int sizeTable,int size,boo
     }
     viewObj.updateBinaryArray(view->binaryArray,tableOffset);
     uint32_t offset = viewObj.Offset(size);
-    int comp = CompareToHelper<T>::CompareTo(viewObj.Get<T>(offset+tableOffset),key);
+    int comp = CompareToHelper<T>::CompareTo(viewObj.GetPos<T>(offset),key);
     if (comp > 0) {
       span = middle;
     } else if (comp < 0) {
@@ -212,7 +218,7 @@ static int bsearchstring(lua_State* L,int vectorLocation,int sizeTable,int size,
     }
     viewObj.updateBinaryArray(view->binaryArray,tableOffset);
     uint32_t offset = viewObj.Offset(size);
-    int comp = strcmp(viewObj.String(offset+tableOffset).string,key);
+    int comp = strcmp(viewObj.String(offset).string,key);
     if (comp > 0) {
       span = middle;
     } else if (comp < 0) {
@@ -611,6 +617,60 @@ static int view_get(lua_State* L) {
     return 0;
 }
 
+static int view_get_pos(lua_State* L) {
+    View* view = check_view(L, 1);
+    uint32_t offset = (uint32_t)luaL_checkinteger(L, 3);
+
+    NumType* num_type = get_num_type(L,2);
+    if(num_type)
+    {
+        switch(num_type->type)
+        {
+            case ENumType_Bool:
+                lua_pushinteger(L, view->GetPos<uint8_t>(offset));
+                return 1;
+            case ENumType_Uint8:
+                lua_pushinteger(L, view->GetPos<uint8_t>(offset));
+                return 1;
+            case ENumType_Uint16:
+                lua_pushinteger(L, view->GetPos<uint16_t>(offset));
+                return 1;
+            case ENumType_Uint32:
+                lua_pushinteger(L, view->GetPos<uint32_t>(offset));
+                return 1;
+            case ENumType_Uint64:
+                lua_pushinteger(L, view->GetPos<uint64_t>(offset));
+                return 1;
+            case ENumType_Int8:
+                lua_pushinteger(L, view->GetPos<int8_t>(offset));
+                return 1;
+            case ENumType_Int16:
+                lua_pushinteger(L, view->GetPos<int16_t>(offset));
+                return 1;
+            case ENumType_Int32:
+                lua_pushinteger(L, view->GetPos<int32_t>(offset));
+                return 1;
+            case ENumType_Int64:
+                lua_pushinteger(L, view->GetPos<int64_t>(offset));
+                return 1;
+            case ENumType_Float32:
+                lua_pushinteger(L, view->GetPos<float>(offset));
+                return 1;
+            case ENumType_Float64:
+                lua_pushinteger(L, view->GetPos<double>(offset));
+                return 1;
+            default:
+                lua_pushliteral(L, "incorrect argument type");
+                lua_error(L);
+                return 0;
+        }
+    }
+
+    lua_pushliteral(L, "incorrect argument");
+    lua_error(L);
+    return 0;
+}
+
 static int view_search_num(lua_State* L) {
     View* view = check_view(L, 1);
     int vectorLocation = (int)luaL_checkinteger(L, 2);
@@ -701,6 +761,7 @@ static void register_view(lua_State* L) {
         { "Vector", view_vector },
         { "Union", view_union },
         { "Get", view_get },
+        { "GetPos", view_get_pos },
         { "LookUpNum", view_search_num },
         { "LookUpString", view_search_string },
         { nullptr, nullptr }
@@ -714,6 +775,7 @@ static void register_view(lua_State* L) {
         { "Vector", view_vector },
         { "Union", view_union },
         { "Get", view_get },
+        { "GetPos", view_get_pos },
         { "LookUpNum", view_search_num },
         { "LookUpString", view_search_string },
         { "__index", view_index },

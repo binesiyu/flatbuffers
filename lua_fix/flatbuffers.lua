@@ -169,7 +169,7 @@ function F.FunField(size,ntype,default)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
-            return self.__view:Get(ntype, o + self.__view.pos)
+            return self.__view:GetPos(ntype, o)
         end
         return default
     end
@@ -177,7 +177,7 @@ end
 
 function F.FunFieldStruct(size,ntype)
     return function(self)
-        return self.__view:Get(ntype, self.__view.pos + size)
+        return self.__view:GetPos(ntype,size)
     end
 end
 
@@ -185,7 +185,7 @@ function F.FunFieldBool(size,ntype,default)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
-            return self.__view:Get(ntype, o + self.__view.pos) ~= 0
+            return self.__view:GetPos(ntype, o) ~= 0
         end
         return default
     end
@@ -195,7 +195,7 @@ function F.FunFieldString(size)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
-            return self.__view:String(o + self.__view.pos)
+            return self.__view:String(o)
         end
     end
 end
