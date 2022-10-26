@@ -35,7 +35,7 @@ Monster.id = F.FunField(28,N.Int32,0)
 -- root cfg
 local MonsterRoot = F.NewCfg()
 
-MonsterRoot.items = F.FunArrayCfg(4,Monster,4,'_fb_items_arr',true,'id',28,true,N.Int32)
+MonsterRoot.data_list = F.FunArrayCfg(4,Monster,4,'_fb_data_list_arr',true,'id',28,true,N.Int32)
 
 
 return F.createCfg('Monster',MonsterRoot) -- return the Cfg

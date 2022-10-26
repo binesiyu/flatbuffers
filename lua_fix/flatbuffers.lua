@@ -571,7 +571,7 @@ local function createCfg(name,root,obj)
     local fileData = getFileData(name)
     if fileData then
         local data = root(binaryArray.New(fileData), 0,true,obj)
-        return data and data.items or {}
+        return data and data.data_list or {}
     end
     return {}
 end

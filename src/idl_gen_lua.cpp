@@ -36,7 +36,6 @@ const char *EndFunc = "end\n";
 const char *SelfData = "self.__view";
 const char *SelfDataPos = "self.__view.pos";
 const char *SelfDataBytes = "self.__view.bytes";
-const char *Root = "Root";
 
 std::string MakeCamel2(const std::string &in, bool first = true);
 
@@ -44,23 +43,32 @@ std::string MakeCamel2(const std::string &in, bool first) {
   return in;
 }
 
-static bool hasEnding (std::string const &fullString, std::string const &ending) {
-    if (fullString.length() >= ending.length()) {
-        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
-    } else {
-        return false;
+
+bool isStructsRoot(const StructDef &struct_def)
+{
+    return struct_def.isroot;
+    //return hasEnding(name,Root);
+}
+
+StructDef* getStructRoot(const StructDef &struct_def) {
+  // Generate the Init method that sets the field in a pre-existing
+  // accessor object. This is to allow object reuse.
+  //InitializeExisting(struct_def, code_ptr);
+  for (auto it = struct_def.fields.vec.begin();
+       it != struct_def.fields.vec.end(); ++it) {
+    auto &field = **it;
+    if (field.deprecated) continue;
+
+    if (field.value.type.base_type != BASE_TYPE_VECTOR) continue;
+    if (field.name == "data_list")
+    {
+        return field.value.type.VectorType().struct_def;
     }
+  }
+    
+    return nullptr;
 }
 
-bool isStructsRoot(const std::string& name)
-{
-    return hasEnding(name,Root);
-}
-
-std::string getStructsNameRoot(const std::string& name)
-{
-    return name.substr(0,name.length()-4);
-}
 
 class LuaGenerator : public BaseGenerator {
  public:
@@ -272,7 +280,7 @@ class LuaGenerator : public BaseGenerator {
 
   // Get the value of a vector's struct member.
   void GetMemberOfVectorOfStruct(const StructDef &struct_def,
-                                 const FieldDef &field, std::string *code_ptr) {
+                                 const FieldDef &field, std::string *code_ptr,const StructDef* strufct_value) {
     std::string &code = *code_ptr;
     auto vectortype = field.value.type.VectorType();
 
@@ -290,10 +298,10 @@ class LuaGenerator : public BaseGenerator {
     
     code += NumToString(field.value.offset);
    
-    if(struct_def.isroot)
+    if(struct_def.isroot && nullptr != strufct_value)
     {
         code += ",";
-        code += getStructsNameRoot(struct_def.name);
+        code += NormalizedName(*strufct_value);
         code += ",";
     }
     else
@@ -513,7 +521,7 @@ class LuaGenerator : public BaseGenerator {
 
   // Generate a struct field, conditioned on its child type(s).
   void GenStructAccessor(const StructDef &struct_def, const FieldDef &field,
-                         std::string *code_ptr) {
+                         std::string *code_ptr,const StructDef* strufct_value = nullptr) {
     GenComment(field.doc_comment, code_ptr, &def_comment);
     if (IsScalar(field.value.type.base_type)) {
       if (struct_def.fixed) {
@@ -536,7 +544,7 @@ class LuaGenerator : public BaseGenerator {
         case BASE_TYPE_VECTOR: {
           auto vectortype = field.value.type.VectorType();
           if (vectortype.base_type == BASE_TYPE_STRUCT) {
-            GetMemberOfVectorOfStruct(struct_def, field, code_ptr);
+            GetMemberOfVectorOfStruct(struct_def, field, code_ptr,strufct_value);
           } else {
             GetMemberOfVectorOfNonStruct(struct_def, field, code_ptr);
           }
@@ -607,7 +615,7 @@ class LuaGenerator : public BaseGenerator {
   }
 
     // Generate struct or table methods.
-    void GenRoot(const StructDef &struct_def, std::string *code_ptr) {
+    void GenRoot(const StructDef &struct_def, std::string *code_ptr,const StructDef* strufct_value) {
       if (struct_def.generated) return;
       std::string &code = *code_ptr;
       code += std::string(Comment) + "root cfg\n";
@@ -620,7 +628,7 @@ class LuaGenerator : public BaseGenerator {
         auto &field = **it;
         if (field.deprecated) continue;
 
-        GenStructAccessor(struct_def, field, code_ptr);
+        GenStructAccessor(struct_def, field, code_ptr,strufct_value);
       }
     }
     
@@ -739,12 +747,12 @@ class LuaGenerator : public BaseGenerator {
     for (auto it = parser_.structs_.vec.begin();
              it != parser_.structs_.vec.end(); ++it) {
       auto &struct_def = **it;
-      if(isStructsRoot(struct_def.name))
+      if(isStructsRoot(struct_def))
       {
-          auto itroot = mapType.find(getStructsNameRoot(struct_def.name));
-          if(itroot != mapType.end())
+          auto struct_type = getStructRoot(struct_def);
+          if(struct_type != nullptr)
           {
-              mapTypeDef[itroot->second] = *it;
+              mapTypeDef[struct_type] = *it;
           }
       }
     }
@@ -752,7 +760,7 @@ class LuaGenerator : public BaseGenerator {
     for (auto it = parser_.structs_.vec.begin();
          it != parser_.structs_.vec.end(); ++it) {
       auto &struct_def = **it;
-        if(isStructsRoot(struct_def.name))
+        if(isStructsRoot(struct_def))
         {
             continue;
         }
@@ -762,7 +770,7 @@ class LuaGenerator : public BaseGenerator {
         {
             GenStruct(struct_def, &declcode);
             auto struct_def_root = itroot->second;
-            GenRoot(*struct_def_root, &declcode);
+            GenRoot(*struct_def_root, &declcode,*it);
             if (!SaveType(struct_def, declcode, true,struct_def_root)) return false;
         }
         else
