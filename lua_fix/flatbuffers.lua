@@ -561,6 +561,7 @@ end
 
 local function getFileData(name)
     local f = assert(io.open('monsterdata.bin', 'rb'))
+    -- local f = assert(io.open('/Users/yubin/Documents/dev/lua/luban_examples-main/MiniTemplate/output_bin/Item.bin', 'rb'))
     local fileData = f:read("*a")
     f:close()
     return fileData
