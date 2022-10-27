@@ -33,7 +33,7 @@ table Weapon {
 }
 
 table MonsterRoot{
-  data_list:[Monster];
+  data_list:Monster;
 }
 
 root_type MonsterRoot;

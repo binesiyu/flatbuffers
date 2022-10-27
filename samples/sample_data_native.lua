@@ -10,6 +10,22 @@ package.path = string.format("./luafix/?.lua;%s",package.path)
 -- require the library
 local weapon = require("MyGame.Sample.Weapon")
 local equipment = require("MyGame.Sample.Equipment")
+local function checkReadBuffer2(buf, offset, sizePrefix)
+    offset = offset or 0
+
+    print("bufAsString",string.len(buf))
+    local s = string.gsub(buf,"(.)",function (x) return string.format("%d ",string.byte(x)) end)
+    print(s)
+
+
+    -- collectgarbage("collect")
+    -- print("释放前lua:", collectgarbage("count"))
+    local monroot = require("MyGame.Sample.Monster")
+    print(monroot,"monroot")
+    for id,mon in pairs(monroot) do
+        print(id,"monroot",mon)
+    end
+end
 
 local function checkReadBuffer(buf, offset, sizePrefix)
     offset = offset or 0
@@ -115,7 +131,7 @@ local function testCanonicalData()
     local f = assert(io.open('monsterdata.bin', 'rb'))
     local wireData = f:read("*a")
     f:close()
-    checkReadBuffer(wireData)
+    checkReadBuffer2(wireData)
 end
 
 collectgarbage("collect")
