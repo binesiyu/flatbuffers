@@ -794,6 +794,15 @@ static void register_view(lua_State* L) {
 
 extern "C" {
 
+LUALIB_API int xluaL_loadBinaryArray (lua_State *L, const char *buff, int size) {
+    SizedString str;
+    str.string = buff;
+    str.size = size;
+    
+    BinaryArray* ptr = new BinaryArray(str);
+    return baref_new(L, ptr);
+}
+
 LUALIB_API int luaopen_flatbuffersnative(lua_State* L)
 {
     register_binaryarray(L);
