@@ -59,10 +59,17 @@ StructDef* getStructRoot(const StructDef &struct_def) {
     auto &field = **it;
     if (field.deprecated) continue;
 
-    if (field.value.type.base_type != BASE_TYPE_VECTOR) continue;
+    
     if (field.name == "data_list")
     {
-        return field.value.type.VectorType().struct_def;
+        if (field.value.type.base_type == BASE_TYPE_VECTOR)
+        {
+            return field.value.type.VectorType().struct_def;
+        }
+        else if(field.value.type.base_type == BASE_TYPE_STRUCT)
+        {
+            return field.value.type.struct_def;
+        }
     }
   }
     
@@ -236,15 +243,31 @@ class LuaGenerator : public BaseGenerator {
   // Get a struct by initializing an existing struct.
   // Specific to Table.
   void GetStructFieldOfTable(const StructDef &struct_def, const FieldDef &field,
-                             std::string *code_ptr) {
+                             std::string *code_ptr,const StructDef* strufct_value) {
     std::string &code = *code_ptr;
     GenReceiverEx(struct_def, code_ptr);
     code += MakeCamel2(NormalizedName(field));
-    code += " = F.FunSub(";
+    if(struct_def.isroot)
+    {
+      code += " = F.FunSubCfg(";
+    }
+    else
+    {
+      code += " = F.FunSub(";
+    }
     code += NumToString(field.value.offset);
-    code += ",'";
-    code += TypeNameWithNamespace(field);
-    code += "',";
+    if(struct_def.isroot && nullptr != strufct_value)
+    {
+      code += ",";
+      code += NormalizedName(*strufct_value);
+      code += ",";
+    }
+    else
+    {
+      code += ",'";
+      code += TypeNameWithNamespace(field);
+      code += "',";
+    }
 
     if (field.value.type.struct_def->fixed) {
         code += "false";
@@ -535,7 +558,7 @@ class LuaGenerator : public BaseGenerator {
           if (struct_def.fixed) {
             GetStructFieldOfStruct(struct_def, field, code_ptr);
           } else {
-            GetStructFieldOfTable(struct_def, field, code_ptr);
+            GetStructFieldOfTable(struct_def, field, code_ptr,strufct_value);
           }
           break;
         case BASE_TYPE_STRING:

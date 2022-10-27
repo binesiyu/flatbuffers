@@ -77,14 +77,11 @@ local function commonpairs(cfg)
       -- Iterator function takes the table and an index and returns the next index and associated value
       -- or nil to end iteration
       local function stateless_iter(t, k)
-        local cv
         -- Implement your own key,value selection logic in place of next
-        k, cv = next(cfg, k)
-        if nil~= cv then
+        k = next(cfg, k)
+        if nil~= k then
             local v = t[k]
-            if nil~=v then
-                return k,v
-            end
+            return k,v
         end
       end
 
@@ -133,21 +130,21 @@ local function createMetaCacheWeak(cfg,obj)
 end
 
 local function New(cfg,buf,offset,sizePrefix,obj)
-    local obj = createObj(buf,offset,sizePrefix,obj)
+    obj = createObj(buf,offset,sizePrefix,obj)
     -- set mt
     setmetatable(obj, createMeta(cfg))
     return obj
 end
 
 local function NewCache(cfg,buf,offset,sizePrefix,obj)
-    local obj = createObj(buf,offset,sizePrefix,obj)
+    obj = createObj(buf,offset,sizePrefix,obj)
     -- set mt
     setmetatable(obj, createMetaCache(cfg))
     return obj
 end
 
 local function NewCacheWeak(cfg,buf,offset,sizePrefix,obj)
-    local obj = createObj(buf,offset,sizePrefix,obj)
+    obj = createObj(buf,offset,sizePrefix,obj)
     -- set mt
     setmetatable(obj, createMetaCacheWeak(cfg,obj))
     return obj
@@ -211,21 +208,23 @@ function F.FunUnion(size)
     end
 end
 
-function F.FunSub(size,path,isTable)
+function F.FunSubCfg(size,cfg,isTable)
     return function(self)
         local o = self.__view:Offset(size)
         if o ~= 0 then
-            local x
+            local  x = o + self.__view.pos
             if isTable then
-                x = self.__view:Indirect(self.__view.pos)
-            else
-                x = o + self.__view.pos
+                x = self.__view:Indirect(x)
             end
-            local cfg = require(path)
             local obj = cfg(self.__view.bytes, x)
             return obj
         end
     end
+end
+
+function F.FunSub(size,path,isTable)
+    local cfg = require(path)
+    return F.FunSubCfg(size,cfg,isTable)
 end
 
 
@@ -588,7 +587,8 @@ local function makeObj(t)
     local root = t.__root
     t.__name = nil
     t.__root = nil
-    local  obj  = createCfg(name,root,t)
+    local  obj  = createCfg(name,root)
+    t.__view = rawget(obj,"__view")
     setmetatable(t, getmetatable(obj))
 end
 
@@ -644,6 +644,6 @@ end
 
 local useLazyLoad = true
 if useLazyLoad then
-    F.createCfg = F.createCfgLazyLoad
+    -- F.createCfg = F.createCfgLazyLoad
 end
 return m
