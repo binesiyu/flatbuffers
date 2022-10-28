@@ -39,7 +39,8 @@ const char *SelfDataBytes = "self.__view.bytes";
 
 std::string MakeCamel2(const std::string &in, bool first = true);
 
-std::string MakeCamel2(const std::string &in, bool first) {
+std::string MakeCamel2(const std::string &in, bool first) { 
+  (void)first;
   return in;
 }
 
@@ -346,11 +347,11 @@ class LuaGenerator : public BaseGenerator {
         flatbuffers::FieldDef *key_field = nullptr;
         for (auto it = vectortype.struct_def->fields.vec.begin();
              it != vectortype.struct_def->fields.vec.end(); ++it) {
-          auto &field = **it;
-          if (field.deprecated) continue;
-          if (field.key)
+          auto &fieldDef = **it;
+          if (fieldDef.deprecated) continue;
+          if (fieldDef.key)
           {
-              key_field = &field;
+            key_field = &fieldDef;
               break;
           }
         }
