@@ -18,6 +18,7 @@
 
 #include <string>
 #include <unordered_set>
+#include <algorithm>
 
 #include "flatbuffers/code_generators.h"
 #include "flatbuffers/flatbuffers.h"
@@ -837,10 +838,12 @@ class LuaGenerator : public BaseGenerator {
     code += classcode;
     code += "\n";
       
+    std::string name = NormalizedName(def);
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     if(root)
     {
         code +=
-            "return F.createCfg('" + NormalizedName(def) + "'," + NormalizedName(*root) + ") " + Comment + "return the Cfg\n";
+            "return F.createCfg('" + name + "'," + NormalizedName(*root) + ") " + Comment + "return the Cfg\n";
     }
     else
     {
@@ -848,7 +851,7 @@ class LuaGenerator : public BaseGenerator {
         "return " + NormalizedName(def) + " " + Comment + "return the module\n";
     }
     std::string filename =
-        NamespaceDir(*def.defined_namespace) + NormalizedName(def) + ".lua";
+        NamespaceDir(*def.defined_namespace) + name + ".lua";
     return SaveFile(filename.c_str(), code, false);
   }
 
