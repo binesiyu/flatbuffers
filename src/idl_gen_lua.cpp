@@ -728,7 +728,9 @@ class LuaGenerator : public BaseGenerator {
   }
 
   std::string TypeNameWithNamespace(const FieldDef &field) {
-    return GetNamespace(field.value.type);
+      std::string name = GetNamespace(field.value.type);
+      std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+      return name;
   }
 
   // Create a struct with a builder and the struct's arguments.
