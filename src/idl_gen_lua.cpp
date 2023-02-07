@@ -731,7 +731,7 @@ class LuaGenerator : public BaseGenerator {
 
   std::string TypeNameWithNamespace(const FieldDef &field) {
       std::string name = GetNamespace(field.value.type);
-      std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+      // std::transform(name.begin(), name.end(), name.begin(), ::tolower);
       return name;
   }
 
@@ -843,7 +843,7 @@ class LuaGenerator : public BaseGenerator {
     code += "\n";
       
     std::string name = NormalizedName(def);
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    // std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     if(root)
     {
         code +=
