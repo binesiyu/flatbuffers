@@ -45,7 +45,31 @@ std::string MakeCamel2(const std::string &in, bool first) {
   return in;
 }
 
+static void toCamelCase(std::string & str)
+{
+  int len = str.length();
+  for (int i = 0; i<len; i++)
+  {
+    if (str[i] >= 'A' && str[i] <= 'Z' && (i == 0 || i == len - 1 || (str[i+1] >= 'A' && str[i+1] <= 'Z')))
+        str[i] = str[i] + 32;
+      else
+          break;
+  }
+  //return str;
+}
 
+/*
+static void toCamelCase(std::string & s)
+{
+    char previous = 'a';
+    auto f = [&](char current){
+        char result = (std::isblank(previous) && std::isalpha(current)) ? std::toupper(current) : std::tolower(current);
+        previous = current;
+        return result;
+    };
+    std::transform(s.begin(),s.end(),s.begin(),f);
+}
+*/
 bool isStructsRoot(const StructDef &struct_def)
 {
     return struct_def.isroot;
@@ -105,6 +129,7 @@ class LuaGenerator : public BaseGenerator {
   void BeginClass(const StructDef &struct_def, std::string *code_ptr) {
     std::string &code = *code_ptr;
     std::string name = NormalizedName(struct_def);
+    toCamelCase(name);
     // std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     code += "local " + NormalizedName(struct_def) + " = F.NewCfg('" + name + "')\n";
     //code += "local " + NormalizedMetaName(struct_def) +
@@ -731,6 +756,7 @@ class LuaGenerator : public BaseGenerator {
 
   std::string TypeNameWithNamespace(const FieldDef &field) {
       std::string name = GetNamespace(field.value.type);
+      toCamelCase(name);
       // std::transform(name.begin(), name.end(), name.begin(), ::tolower);
       return name;
   }
@@ -843,6 +869,7 @@ class LuaGenerator : public BaseGenerator {
     code += "\n";
       
     std::string name = NormalizedName(def);
+    toCamelCase(name);
     // std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     if(root)
     {
