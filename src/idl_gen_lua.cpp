@@ -105,7 +105,7 @@ class LuaGenerator : public BaseGenerator {
   void BeginClass(const StructDef &struct_def, std::string *code_ptr) {
     std::string &code = *code_ptr;
     std::string name = NormalizedName(struct_def);
-    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    // std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     code += "local " + NormalizedName(struct_def) + " = F.NewCfg('" + name + "')\n";
     //code += "local " + NormalizedMetaName(struct_def) +
     //        " = {} -- the class metatable\n";
