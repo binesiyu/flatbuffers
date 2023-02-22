@@ -402,7 +402,11 @@ function F.FunArray(size,ntype,ntypesize,cachekey,default)
                             local o = self.__view:Offset(size)
                             if o ~= 0 then
                                 local a = self.__view:Vector(o)
-                                return self.__view:Get(ntype, a + ((j-1) * ntypesize))
+                                if ntype == N.String then
+                                    return self.__view:String(a + ((j-1) * ntypesize) - self.__view.pos)
+                                else
+                                    return self.__view:Get(ntype, a + ((j-1) * ntypesize))
+                                end
                             end
                             return default
                         else
